@@ -1,0 +1,42 @@
+<view class="container">
+
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+
+  <view wx:elif="{{errorMsg}}" class="empty">{{errorMsg}}</view>
+
+  <block wx:else>
+    <view wx:for="{{groups}}" wx:key="groupCode" class="group">
+      <view class="group-title">{{item.groupName}}</view>
+
+      <view
+        wx:for="{{item.nodes}}"
+        wx:for-item="node"
+        wx:key="id"
+        class="node {{node.urgent ? 'node--urgent' : ''}} {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
+      >
+        <view class="node-main">
+          <view class="node-head">
+            <text class="badge">{{node.nodeLabel}}</text>
+            <text class="node-name">{{node.name}}</text>
+          </view>
+          <view class="node-date">{{node.examDate}}</view>
+        </view>
+
+        <view class="node-right">
+          <view class="countdown">{{node.daysLabel}}</view>
+          <button
+            class="subscribe-btn"
+            size="mini"
+            data-id="{{node.id}}"
+            data-name="{{node.name}}"
+            data-templateid="{{node.templateId}}"
+            bindtap="onSubscribe"
+          >订阅提醒</button>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{groups.length === 0}}" class="empty">暂无上架节点</view>
+  </block>
+
+</view>

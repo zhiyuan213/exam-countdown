@@ -1,0 +1,19 @@
+{
+  "description": "考试倒计时小程序（前端从后端接口契约重建）",
+  "miniprogramRoot": "./",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "appid": "wx23a7083f915b62a1",
+  "projectname": "exam-countdown",
+  "cloudfunctionRoot": "",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "nodeModules": false
+  },
+  "condition": {}
+}

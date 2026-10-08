@@ -1,0 +1,2 @@
+INSERT INTO `exam_countdown`.`subscription` (`id`,`openid`,`exam_id`,`template_id`,`remain_times`,`created_at`) VALUES (2,'oz140xqXTNBrY7v7HWe_6rUfZ4Ts',1,'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws',0,'2026-09-24 12:41:19');
+INSERT INTO `exam_countdown`.`subscription` (`id`,`openid`,`exam_id`,`template_id`,`remain_times`,`created_at`) VALUES (3,'oHKYGxrXxHig5xjrDood2ssrquVc',101,'yHgEQ0G-j_wYVI9D85PJa4WNursx3WsaD4Wgm_I8uE4',0,'2026-09-25 03:28:52');

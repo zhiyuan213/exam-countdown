@@ -1,0 +1,2 @@
+INSERT INTO `exam_countdown`.`wx_user` (`id`,`openid`,`created_at`) VALUES (1,'oz140xqXTNBrY7v7HWe_6rUfZ4Ts','2026-09-24 12:41:19');
+INSERT INTO `exam_countdown`.`wx_user` (`id`,`openid`,`created_at`) VALUES (2,'oHKYGxrXxHig5xjrDood2ssrquVc','2026-09-25 03:24:40');

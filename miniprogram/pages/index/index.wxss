@@ -1,0 +1,100 @@
+.group {
+  margin-bottom: 32rpx;
+}
+
+.group-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  padding: 8rpx 8rpx 16rpx;
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  border-left: 6rpx solid #d9dde3;
+}
+
+.node--urgent {
+  border-left-color: #e94f4f;
+}
+
+.node--passed {
+  opacity: 0.5;
+}
+
+.node--highlight {
+  box-shadow: 0 0 0 3rpx #4a90e2 inset;
+}
+
+.node-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.node-head {
+  display: flex;
+  align-items: center;
+}
+
+.badge {
+  font-size: 20rpx;
+  color: #4a90e2;
+  background: #eaf3fd;
+  border-radius: 6rpx;
+  padding: 2rpx 10rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.node-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-date {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 10rpx;
+}
+
+.node-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+.countdown {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.node--urgent .countdown {
+  color: #e94f4f;
+}
+
+.subscribe-btn {
+  font-size: 22rpx !important;
+  line-height: 2.2 !important;
+  padding: 0 20rpx !important;
+  background: #4a90e2 !important;
+  color: #fff !important;
+  border-radius: 30rpx !important;
+  margin: 0 !important;
+}
+
+.subscribe-btn::after {
+  border: none;
+}

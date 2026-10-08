@@ -1,0 +1,34 @@
+# ⚠️ 本文件是从线上 jar 中直接提取的【原始配置】的脱敏副本：
+#    原文件中 WX_SECRET / SPRING_DATASOURCE_PASSWORD 写有真实默认值，
+#    为便于公开存档已置空，其余内容保持原样。
+# 环境变量可直接覆盖（Spring 放开式绑定）：
+#   本地写死的值 = 默认值；云托管部署时在控制台配环境变量即可，无需改代码
+#   WX_APPID / WX_SECRET / WX_TEMPLATE_ID
+#   SPRING_DATASOURCE_URL / SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD
+#   REMIND_JOB_TOKEN
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/exam_countdown?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  sql:
+    init:
+      mode: always   # 启动时执行 schema.sql（全部用 IF NOT EXISTS，可重复启动）
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+wx:
+  appid: ${WX_APPID:wx23a7083f915b62a1}
+  secret: ${WX_SECRET:}
+  template-id: ${WX_TEMPLATE_ID:CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws}
+  cloud-call: ${WX_CLOUD_CALL:true}   # true=云托管云调用通道(http自动注入token)；本地开发设 false 走 https+secret
+
+remind:
+  cron: "0 0 8 * * ?"          # 每天 08:00 推送；调试时可临时改成 "*/30 * * * * ?"
+  nodes: "30,7,1,0"            # 提醒节点：考前 30/7/1 天及当天
+  job-token: ${REMIND_JOB_TOKEN:change-me}  # 云托管定时任务调用 /api/job/remind 的口令
