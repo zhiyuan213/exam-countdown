@@ -78,8 +78,6 @@
         <text class="group-hint">{{quotaText || '免费 3 个'}}</text>
       </view>
 
-      <view wx:if="{{customNodes.length === 0}}" class="mine-empty">还没有设置提醒，点下方按钮加一个</view>
-
       <block wx:for="{{customNodes}}" wx:for-item="node" wx:key="id">
         <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
       </block>
