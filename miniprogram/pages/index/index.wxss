@@ -17,20 +17,65 @@
   transition: none;
 }
 
-.pull-icon {
-  width: 44rpx;
-  height: 44rpx;
+/* 翻页日历（下拉刷新图标）：三层叠放，上翻盖绕中轴线翻转 */
+.cal-flip {
+  position: relative;
+  width: 56rpx;
+  height: 56rpx;
   margin-bottom: 4rpx;
 }
 
-/* 刷新中：图标持续旋转 */
-.pull-icon.spinning {
-  animation: pull-spin 0.9s linear infinite;
+.cal-half {
+  position: absolute;
+  left: 0;
+  width: 56rpx;
+  height: 28rpx;
+  overflow: hidden;
 }
 
-@keyframes pull-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.cal-half-top {
+  top: 0;
+}
+
+.cal-half-bottom {
+  top: 28rpx;
+}
+
+.cal-img {
+  display: block;
+  width: 56rpx;
+  height: 56rpx;
+}
+
+.cal-img-bottom {
+  margin-top: -28rpx;
+}
+
+.cal-flap {
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* 翻页时给上盖一点暗面，增强立体感 */
+.cal-shade {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56rpx;
+  height: 28rpx;
+  background: #000;
+}
+
+/* 刷新中：上盖持续翻页（翻到底瞬间归位，此时背面不可见，视觉无断裂） */
+.cal-flipping .cal-flap {
+  animation: cal-flip 1s linear infinite;
+}
+
+@keyframes cal-flip {
+  0% { transform: perspective(240rpx) rotateX(0deg); }
+  60% { transform: perspective(240rpx) rotateX(-180deg); }
+  100% { transform: perspective(240rpx) rotateX(-180deg); }
 }
 
 .pull-text {
