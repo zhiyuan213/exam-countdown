@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS push_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推送日志';
 
 -- ============================================================
--- 用户自建提醒（「我的提醒」）
+-- 用户自建提醒（「自定义提醒」）
 -- 与官方节点表 exam 分开存：exam 是运营配置的官方节点，本表是用户自己加的节点。
 -- ⚠️ 刻意不对 exam 表做 ALTER —— schema.sql 每次启动都会执行，
 --    ALTER TABLE ADD COLUMN 在 MySQL 里不幂等，重复执行会让服务启动失败。

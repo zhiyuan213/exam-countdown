@@ -106,7 +106,7 @@ function mockCall(path, method, data) {
           templateId: (mockData[0] && mockData[0].templateId) || '',
           nodeType: 'CUSTOM',
           groupCode: 'custom',
-          groupName: '我的提醒',
+          groupName: '自定义提醒',
           sort: 0,
           isCustom: true,
         };
@@ -208,7 +208,7 @@ function cancelSubscribe(examId) {
   return call('/api/subscribe/cancel', 'POST', { examId });
 }
 
-/** 我的提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
+/** 自定义提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
 function fetchQuota() {
   return call('/api/quota', 'GET');
 }

@@ -22,7 +22,7 @@ import java.util.Map;
  * 不传、或传 main/all，则返回全部官方节点（当前线上就是这个模式）。
  *
  * 另外：如果请求带上了 openid（云托管注入），会把该用户自己加的提醒一并返回，
- * 分组为「我的提醒」（groupCode=custom，isCustom=true，id 见 UserExam.ID_BASE）。
+ * 分组为「自定义提醒」（groupCode=custom，isCustom=true，id 见 UserExam.ID_BASE）。
  */
 @RestController
 @RequestMapping("/api/exams")
@@ -87,7 +87,7 @@ public class ExamController {
         return m;
     }
 
-    /** 自建节点：id 走命名空间，统一挂到「我的提醒」分组 */
+    /** 自建节点：id 走命名空间，统一挂到「自定义提醒」分组 */
     private Map<String, Object> customItem(UserExam ue) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", UserExam.toPublicId(ue.getId()));
@@ -96,7 +96,7 @@ public class ExamController {
         m.put("templateId", ue.getTemplateId());
         m.put("nodeType", "CUSTOM");
         m.put("groupCode", "custom");
-        m.put("groupName", "我的提醒");
+        m.put("groupName", "自定义提醒");
         m.put("sort", 0);
         m.put("isCustom", true);
         return m;

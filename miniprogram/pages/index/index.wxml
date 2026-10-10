@@ -41,7 +41,7 @@
   <block wx:else>
     <view class="group group--mine">
       <view class="group-head">
-        <text class="group-title">我的提醒</text>
+        <text class="group-title">自定义提醒</text>
         <text class="group-hint">{{quotaText || '免费 3 个'}}</text>
       </view>
 

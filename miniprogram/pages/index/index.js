@@ -60,7 +60,7 @@ Page({
       .catch((err) => console.error('fetchSubscriptions failed:', err));
   },
 
-  /** 顶部显示我的提醒占用情况，方便用户知道还能加几个 */
+  /** 顶部显示自定义提醒占用情况，方便用户知道还能加几个 */
   loadQuota() {
     api.fetchQuota()
       .then((q) => {

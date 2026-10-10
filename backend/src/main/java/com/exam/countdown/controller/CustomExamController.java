@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 用户自建提醒（「我的提醒」）。
+ * 用户自建提醒（「自定义提醒」）。
  *
- *   GET    /api/exams/custom        我的提醒列表 + 剩余额度
+ *   GET    /api/exams/custom        自定义提醒列表 + 剩余额度
  *   POST   /api/exams/custom        新建提醒（受额度限制）
  *   DELETE /api/exams/custom/{id}   删除提醒（逻辑删除，释放额度）
  *
@@ -167,7 +167,7 @@ public class CustomExamController {
         m.put("templateId", ue.getTemplateId());
         m.put("nodeType", "CUSTOM");
         m.put("groupCode", "custom");
-        m.put("groupName", "我的提醒");
+        m.put("groupName", "自定义提醒");
         m.put("sort", 0);
         m.put("isCustom", true);
         m.put("daysLeft", ue.getExamDate() == null ? null

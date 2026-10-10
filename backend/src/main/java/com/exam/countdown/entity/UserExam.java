@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 用户自建提醒（前端「我的提醒」分组）。
+ * 用户自建提醒（前端「自定义提醒」分组）。
  *
  * 与官方节点表 exam 分开存：exam 由运营配置，本表由用户自己添加。
  *

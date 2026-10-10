@@ -175,7 +175,7 @@ GET /api/job/remind?token=<REMIND_JOB_TOKEN>
 
 ---
 
-## 5. 我的提醒（用户自建提醒）· 2026-10 新增
+## 5. 自定义提醒（用户自建提醒）· 2026-10 新增
 
 ### ID 命名空间（重要）
 
@@ -197,11 +197,11 @@ GET /api/job/remind?token=<REMIND_JOB_TOKEN>
 
 ### 接口
 
-**我的提醒列表 + 额度**
+**自定义提醒列表 + 额度**
 
 ```
 GET /api/exams/custom
-→ { "ok": true, "quota": {...}, "items": [ {id, name, examDate, templateId, nodeType:"CUSTOM", groupCode:"custom", groupName:"我的提醒", sort:0, isCustom:true, daysLeft} ] }
+→ { "ok": true, "quota": {...}, "items": [ {id, name, examDate, templateId, nodeType:"CUSTOM", groupCode:"custom", groupName:"自定义提醒", sort:0, isCustom:true, daysLeft} ] }
 ```
 
 **新建提醒**
@@ -233,7 +233,7 @@ GET /api/quota
 
 ### `/api/exams` 的变化
 
-带 openid（云托管注入）请求时，返回值会**追加**该用户的自建节点（`isCustom: true`，分组 `我的提醒`）；官方节点字段与历史版本完全一致，仅多一个 `isCustom: false`。前端按 `groupCode` 分组渲染，自建节点排在最后。
+带 openid（云托管注入）请求时，返回值会**追加**该用户的自建节点（`isCustom: true`，分组 `自定义提醒`）；官方节点字段与历史版本完全一致，仅多一个 `isCustom: false`。前端按 `groupCode` 分组渲染，自建节点排在最后。
 
 ### 自建提醒的推送
 
