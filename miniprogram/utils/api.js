@@ -24,11 +24,26 @@ const APP_KEY = 'main';
 const USE_MOCK = true;
 const mockData = require('./mock-data');
 
-// ---- mock 专用状态：自建提醒存在内存里，方便开发者工具里验证增删 ----
+// ---- mock 专用状态：自建提醒持久化到本地存储，重编译不丢，方便开发者工具里验证增删 ----
 const MOCK_ID_BASE = 1000000000;   // 与后端 UserExam.ID_BASE 保持一致
 const MOCK_FREE_QUOTA = 3;
+const MOCK_STORE_KEY = 'mock_custom_list';
 let mockCustom = [];
-let mockCustomSeq = 1;
+try {
+  const saved = wx.getStorageSync(MOCK_STORE_KEY);
+  if (Array.isArray(saved)) mockCustom = saved;
+} catch (e) { /* 存储不可用就退化为纯内存 */ }
+let mockCustomSeq = mockCustom.reduce((m, x) => Math.max(m, x.id - MOCK_ID_BASE), 0) + 1;
+
+function mockPersist() {
+  try { wx.setStorageSync(MOCK_STORE_KEY, mockCustom); } catch (e) { /* ignore */ }
+}
+
+function mockReset() {
+  mockCustom = [];
+  mockCustomSeq = 1;
+  mockPersist();
+}
 
 function todayStr() {
   const d = new Date();
@@ -84,10 +99,14 @@ function mockCall(path, method, data) {
           isCustom: true,
         };
         mockCustom.push(item);
+        mockPersist();
+        console.log('[mock] custom created:', item, 'quota:', mockQuota());
         resolve({ ok: true, item, quota: mockQuota() });
       } else if (path.indexOf('/api/exams/custom/') === 0 && method === 'DELETE') {
         const id = Number(path.split('/').pop());
         mockCustom = mockCustom.filter((x) => x.id !== id);
+        mockPersist();
+        console.log('[mock] custom deleted:', id, 'quota:', mockQuota());
         resolve({ ok: true, quota: mockQuota() });
       } else if (path === '/api/subscribe' && method === 'POST') {
         resolve({ ok: true, remainTimes: 1 });
@@ -166,6 +185,7 @@ function deleteCustom(id) {
 
 module.exports = {
   call, login, fetchExams, subscribe,
-  fetchQuota, createCustom, deleteCustom,
+  fetchQuota, createCustom, deleteCustom, mockReset,
+  IS_MOCK: USE_MOCK,
   ENV_ID, SERVICE, APP_KEY,
 };

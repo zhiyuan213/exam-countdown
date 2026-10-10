@@ -83,13 +83,37 @@ Page({
     }
 
     const tplId = this.data.templateId;
+    if (api.IS_MOCK) {
+      // mock 模式：跳过真实订阅授权弹窗（开发者工具里 requestSubscribeMessage
+      // 的 success/fail 回调经常不触发，会导致 create 不执行、额度不更新），
+      // 直接创建节点，专注验证额度与列表逻辑。
+      console.log('[add] mock mode: skip subscribe dialog');
+      this.create(false);
+      return;
+    }
     if (tplId) {
+      // 兜底：开发者工具里 requestSubscribeMessage 偶发 success/fail 都不回调，
+      // 5 秒没结果就视为未授权，照常创建节点，避免「点了没反应」。
+      let settled = false;
+      const guard = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          console.warn('requestSubscribeMessage timeout, create without auth');
+          this.create(false);
+        }
+      }, 5000);
+      const finish = (authorized) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(guard);
+        this.create(authorized);
+      };
       wx.requestSubscribeMessage({
         tmplIds: [tplId],
-        success: (res) => this.create(res[tplId] === 'accept'),
+        success: (res) => finish(res[tplId] === 'accept'),
         fail: (err) => {
           console.warn('requestSubscribeMessage failed:', err);
-          this.create(false);
+          finish(false);
         },
       });
     } else {
