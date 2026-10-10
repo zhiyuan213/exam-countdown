@@ -18,8 +18,8 @@
 }
 
 .pull-icon {
-  font-size: 44rpx;
-  line-height: 1.2;
+  width: 44rpx;
+  height: 44rpx;
   margin-bottom: 4rpx;
 }
 
@@ -94,8 +94,10 @@
 }
 
 .hero-icon {
-  font-size: 52rpx;
+  width: 52rpx;
+  height: 52rpx;
   margin-right: 20rpx;
+  flex-shrink: 0;
 }
 
 .hero-text {

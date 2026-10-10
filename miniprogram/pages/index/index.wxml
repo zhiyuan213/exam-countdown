@@ -41,12 +41,12 @@
 
   <!-- 自定义下拉刷新区（京东样式：随下拉距离动态变化） -->
   <view wx:if="{{pullH > 0}}" class="pull-zone {{dragging ? 'dragging' : ''}}" style="height:{{pullH}}px">
-    <text class="pull-icon {{refreshing ? 'spinning' : ''}}">📅</text>
+    <image class="pull-icon {{refreshing ? 'spinning' : ''}}" src="/images/calendar-red.png" />
     <text class="pull-text {{pullReady ? 'ready' : ''}}">{{pullText}}</text>
   </view>
 
   <view class="hero">
-    <text class="hero-icon">📅</text>
+    <image class="hero-icon" src="/images/calendar-red.png" />
     <view class="hero-text">
       <text class="hero-title">考试倒计时</text>
       <text class="hero-sub">每一次努力，都在靠近梦想</text>
