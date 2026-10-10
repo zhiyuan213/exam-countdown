@@ -2,41 +2,6 @@
   margin-bottom: 32rpx;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 20rpx 24rpx;
-  margin-bottom: 24rpx;
-}
-
-.toolbar-hint {
-  font-size: 24rpx;
-  color: #888;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.add-btn {
-  font-size: 24rpx !important;
-  line-height: 2.2 !important;
-  padding: 0 24rpx !important;
-  background: #4a90e2 !important;
-  color: #fff !important;
-  border-radius: 30rpx !important;
-  margin: 0 0 0 16rpx !important;
-  flex-shrink: 0;
-}
-
-.add-btn::after {
-  border: none;
-}
-
 .btn-row {
   display: flex;
   align-items: center;
@@ -62,6 +27,42 @@
   font-weight: 600;
   color: #333;
   padding: 8rpx 8rpx 16rpx;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.group-head .group-title {
+  padding-bottom: 8rpx;
+}
+
+.group-hint {
+  font-size: 22rpx;
+  color: #8a94a6;
+  padding-right: 8rpx;
+}
+
+.mine-empty {
+  font-size: 24rpx;
+  color: #a2aab8;
+  padding: 8rpx 8rpx 16rpx;
+}
+
+.add-entry {
+  font-size: 26rpx !important;
+  line-height: 2.6 !important;
+  background: #fff !important;
+  color: #4a90e2 !important;
+  border: 1rpx dashed #9cc3f0 !important;
+  border-radius: 40rpx !important;
+  margin: 8rpx 0 24rpx !important;
+}
+
+.add-entry::after {
+  border: none;
 }
 
 .node {

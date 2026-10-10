@@ -1,3 +1,39 @@
+<template name="nodeItem">
+  <view
+    class="node {{node.urgent ? 'node--urgent' : ''}} {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
+  >
+    <view class="node-main">
+      <view class="node-head">
+        <text class="badge">{{node.nodeLabel}}</text>
+        <text class="node-name">{{node.name}}</text>
+      </view>
+      <view class="node-date">{{node.examDate}}</view>
+    </view>
+
+    <view class="node-right">
+      <view class="countdown">{{node.daysLabel}}</view>
+      <view class="btn-row">
+        <button
+          class="subscribe-btn {{subscribedMap[node.id] ? 'is-subscribed' : ''}}"
+          size="mini"
+          data-id="{{node.id}}"
+          data-name="{{node.name}}"
+          data-templateid="{{node.templateId}}"
+          bindtap="onSubscribe"
+        >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
+        <button
+          wx:if="{{node.isCustom}}"
+          class="delete-btn"
+          size="mini"
+          data-id="{{node.id}}"
+          data-name="{{node.name}}"
+          bindtap="onDelete"
+        >删除</button>
+      </view>
+    </view>
+  </view>
+</template>
+
 <view class="container">
 
   <view wx:if="{{loading}}" class="loading">加载中…</view>
@@ -5,50 +41,27 @@
   <view wx:elif="{{errorMsg}}" class="empty">{{errorMsg}}</view>
 
   <block wx:else>
-    <view class="toolbar">
-      <text class="toolbar-hint">{{quotaText || '自定义你的提醒'}}</text>
-      <button class="add-btn" size="mini" bindtap="onAdd">+ 添加提醒</button>
+    <view class="group group--mine">
+      <view class="group-head">
+        <text class="group-title">我的提醒</text>
+        <text class="group-hint">{{quotaText || '免费 3 个'}}</text>
+      </view>
+
+      <view wx:if="{{customNodes.length === 0}}" class="mine-empty">还没有自建提醒，点下方按钮加一个</view>
+
+      <block wx:for="{{customNodes}}" wx:for-item="node" wx:key="id">
+        <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
+      </block>
+
+      <button class="add-entry" bindtap="onAdd">＋ 添加提醒</button>
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
       <view class="group-title">{{item.groupName}}</view>
 
-      <view
-        wx:for="{{item.nodes}}"
-        wx:for-item="node"
-        wx:key="id"
-        class="node {{node.urgent ? 'node--urgent' : ''}} {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
-      >
-        <view class="node-main">
-          <view class="node-head">
-            <text class="badge">{{node.nodeLabel}}</text>
-            <text class="node-name">{{node.name}}</text>
-          </view>
-          <view class="node-date">{{node.examDate}}</view>
-        </view>
-
-        <view class="node-right">
-          <view class="countdown">{{node.daysLabel}}</view>
-          <view class="btn-row">
-            <button
-              class="subscribe-btn {{subscribedMap[node.id] ? 'is-subscribed' : ''}}"
-              size="mini"
-              data-id="{{node.id}}"
-              data-name="{{node.name}}"
-              data-templateid="{{node.templateId}}"
-              bindtap="onSubscribe"
-            >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
-            <button
-              wx:if="{{node.isCustom}}"
-              class="delete-btn"
-              size="mini"
-              data-id="{{node.id}}"
-              data-name="{{node.name}}"
-              bindtap="onDelete"
-            >删除</button>
-          </view>
-        </view>
-      </view>
+      <block wx:for="{{item.nodes}}" wx:for-item="node" wx:key="id">
+        <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
+      </block>
     </view>
 
     <view wx:if="{{groups.length === 0}}" class="empty">暂无上架节点</view>

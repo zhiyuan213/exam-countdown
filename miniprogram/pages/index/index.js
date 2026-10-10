@@ -30,6 +30,7 @@ Page({
   data: {
     loading: true,
     groups: [],
+    customNodes: [],
     highlightId: 0,
     errorMsg: '',
     quotaText: '',
@@ -59,12 +60,12 @@ Page({
       .catch((err) => console.error('fetchSubscriptions failed:', err));
   },
 
-  /** 顶部显示「我的提醒」占用情况，方便用户知道还能加几个 */
+  /** 顶部显示我的提醒占用情况，方便用户知道还能加几个 */
   loadQuota() {
     api.fetchQuota()
       .then((q) => {
         if (q && q.ok !== false && typeof q.remaining === 'number') {
-          this.setData({ quotaText: `我的提醒 ${q.used}/${q.limit}，还可添加 ${q.remaining} 个` });
+          this.setData({ quotaText: `已用 ${q.used}/${q.limit}，还可加 ${q.remaining} 个` });
         }
       })
       .catch((err) => console.error('fetchQuota failed:', err));
@@ -109,8 +110,10 @@ Page({
     this.setData({ loading: true, errorMsg: '' });
     return api.fetchExams()
       .then((list) => {
+        const built = this.buildGroups(list || []);
         this.setData({
-          groups: this.buildGroups(list || []),
+          customNodes: built.custom,
+          groups: built.official,
           loading: false,
         });
       })
@@ -123,9 +126,14 @@ Page({
       });
   },
 
-  /** 按 groupCode 分组，组内按 sort 升序 */
+  /**
+   * 分组：自建提醒（groupCode=custom）单独拆出来置顶，官方节点按 groupCode 分组。
+   * 组内按 exam_date 升序。
+   */
   buildGroups(list) {
+    const custom = [];
     const map = {};
+
     list.forEach((item) => {
       const days = daysLeft(item.examDate);
       const node = {
@@ -141,6 +149,12 @@ Page({
         passed: days < 0,
         isCustom: !!item.isCustom,
       };
+
+      if (node.isCustom || item.groupCode === 'custom') {
+        custom.push(node);
+        return;
+      }
+
       const key = item.groupCode || 'other';
       if (!map[key]) {
         map[key] = {
@@ -151,10 +165,15 @@ Page({
       }
       map[key].nodes.push(node);
     });
-    Object.keys(map).forEach((k) => {
-      map[k].nodes.sort((a, b) => parseDate(a.examDate) - parseDate(b.examDate));
-    });
-    return Object.keys(map).map((k) => map[k]);
+
+    const byDate = (a, b) => parseDate(a.examDate) - parseDate(b.examDate);
+    custom.sort(byDate);
+    Object.keys(map).forEach((k) => map[k].nodes.sort(byDate));
+
+    return {
+      custom,
+      official: Object.keys(map).map((k) => map[k]),
+    };
   },
 
   daysLabel(days) {
