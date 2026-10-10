@@ -29,10 +29,19 @@
         >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
       </view>
     </view>
+    <text class="chevron">›</text>
   </view>
 </template>
 
 <view class="container">
+
+  <view class="hero">
+    <text class="hero-icon">📅</text>
+    <view class="hero-text">
+      <text class="hero-title">考试倒计时</text>
+      <text class="hero-sub">每一次努力，都在靠近梦想</text>
+    </view>
+  </view>
 
   <view wx:if="{{loading}}" class="loading">加载中…</view>
 
@@ -62,9 +71,10 @@
             <text class="badge">{{item.nodeLabel}}</text>
             <text class="sub-name">{{item.name}}</text>
           </view>
-          <view class="sub-date">{{item.examDate}} · 剩余 {{item.remainTimes}} 次推送</view>
+          <view class="sub-date">📅 {{item.examDate}} · 剩余 {{item.remainTimes}} 次推送</view>
         </view>
-        <view class="sub-days">{{item.daysLabel}}</view>
+        <text class="days-pill {{item.urgent ? 'days-pill--urgent' : ''}}">{{item.daysLabel}}</text>
+        <text class="chevron">›</text>
       </view>
     </view>
 
