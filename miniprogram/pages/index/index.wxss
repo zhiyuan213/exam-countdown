@@ -38,15 +38,7 @@
   transition: none;
 }
 
-/* 刷新中：持续顺时针转（loading 反馈） */
-.pull-icon.spinning {
-  animation: pull-spin 0.9s linear infinite;
-}
-
-@keyframes pull-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+/* 刷新中：图标不再自转（只用文字提示），避免拉满一圈松手后"又转一圈"的错觉 */
 
 /* 下拉提示文字：只换文案，字号/颜色/大小均保持不变 */
 .pull-text {

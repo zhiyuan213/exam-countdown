@@ -113,12 +113,14 @@ Page({
     const ready = h >= 55;
     // 命中阈值变化或位移超过 2px 才 setData，减少渲染次数
     if (ready !== this.data.pullReady || Math.abs(h - this.data.pullH) >= 2) {
-      // 图标旋转：下拉顺时针（正角度），拉到上限 110px 时正好转满一圈；
-      // 松手后角度收回 0，数值减小 → 视觉上是逆时针转回正位
+      // 图标旋转：下拉顺时针（正角度），拉到上限 110px 时正好转满一圈。
+      // 角度归一化到 [0,360)：拉满时是 0°（视觉上刚好转完一整圈回到原位），
+      // 这样松手后 pullRotate 无需再变化，不会触发 360°→0° 的整圈回旋补间。
+      // 未拉满松手时，角度从当前值收回 0，数值减小 → 视觉上是逆时针转回正位
       const t = Math.min(1, h / 110);
       this.setData({
         pullH: h,
-        pullRotate: Math.round(t * 360),
+        pullRotate: Math.round(t * 360) % 360,
         pullText: ready ? '松手更新' : '下拉刷新',
         pullReady: ready,
       });
@@ -129,7 +131,8 @@ Page({
     if (!this._pullActive) return;
     this._pullActive = false;
     if (this.data.pullReady && !this.data.refreshing) {
-      // 松手 → 进入刷新态：图标持续左转，收起改为带过渡动画
+      // 松手 → 进入刷新态：图标停在原地（不再自转，避免"又转一圈"的错觉），
+      // 只用文字「正在刷新…」做反馈；收起改为带过渡动画
       this.setData({
         dragging: false,
         pullReady: false,
