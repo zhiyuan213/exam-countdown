@@ -7,13 +7,6 @@
   align-items: center;
 }
 
-.mine-hint {
-  font-size: 22rpx;
-  color: #a2aab8;
-  text-align: center;
-  padding: 0 0 8rpx;
-}
-
 .group-title {
   position: relative;
   font-size: 30rpx;

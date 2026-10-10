@@ -85,7 +85,6 @@
       </block>
 
       <button class="add-entry" bindtap="onAdd">＋ 添加提醒</button>
-      <view class="mine-hint">提示：长按设置提醒可删除</view>
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
