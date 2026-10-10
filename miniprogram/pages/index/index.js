@@ -113,11 +113,12 @@ Page({
     const ready = h >= 55;
     // 命中阈值变化或位移超过 2px 才 setData，减少渲染次数
     if (ready !== this.data.pullReady || Math.abs(h - this.data.pullH) >= 2) {
-      // 图标旋转：拉到上限 110px 时正好左转满一圈（360°），负角度 = 逆时针
+      // 图标旋转：下拉顺时针（正角度），拉到上限 110px 时正好转满一圈；
+      // 松手后角度收回 0，数值减小 → 视觉上是逆时针转回正位
       const t = Math.min(1, h / 110);
       this.setData({
         pullH: h,
-        pullRotate: -Math.round(t * 360),
+        pullRotate: Math.round(t * 360),
         pullText: ready ? '松手更新' : '下拉刷新',
         pullReady: ready,
       });

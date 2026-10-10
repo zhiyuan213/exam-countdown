@@ -38,14 +38,14 @@
   transition: none;
 }
 
-/* 刷新中：持续左转（loading 反馈） */
+/* 刷新中：持续顺时针转（loading 反馈） */
 .pull-icon.spinning {
   animation: pull-spin 0.9s linear infinite;
 }
 
 @keyframes pull-spin {
   from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 下拉提示文字：只换文案，字号/颜色/大小均保持不变 */
