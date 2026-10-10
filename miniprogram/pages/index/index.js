@@ -172,22 +172,50 @@ Page({
       return;
     }
 
-    // 已订阅过：再订一次 = 增加一条推送额度，让用户确认而不是默默叠加
+    // 已订阅过：弹出操作菜单，可加订额度或取消订阅
     const remain = this.data.subscribedMap[id];
     if (remain > 0) {
-      wx.showModal({
-        title: '已订阅过',
-        content: `「${name}」已订阅（剩余 ${remain} 次提醒）。再订一次可多一条推送额度，继续吗？`,
-        confirmText: '再订一次',
+      wx.showActionSheet({
+        itemList: ['再订一次（+1 条推送额度）', '取消订阅'],
         success: (res) => {
-          if (res.confirm) {
+          if (res.tapIndex === 0) {
             this.doSubscribe(id, templateId);
+          } else if (res.tapIndex === 1) {
+            this.doCancel(id, name);
           }
         },
       });
       return;
     }
     this.doSubscribe(id, templateId);
+  },
+
+  /** 取消订阅：二次确认后删除该节点的推送额度 */
+  doCancel(id, name) {
+    wx.showModal({
+      title: '取消订阅',
+      content: `取消后不再收到「${name}」的提醒，确定吗？`,
+      confirmText: '取消订阅',
+      confirmColor: '#e64340',
+      success: (res) => {
+        if (!res.confirm) return;
+        api.cancelSubscribe(id)
+          .then((r) => {
+            if (r && r.ok) {
+              const map = Object.assign({}, this.data.subscribedMap);
+              delete map[id];
+              this.setData({ subscribedMap: map });
+              wx.showToast({ title: '已取消订阅', icon: 'success' });
+            } else {
+              wx.showToast({ title: (r && r.msg) || '取消失败，请重试', icon: 'none' });
+            }
+          })
+          .catch((err) => {
+            console.error('cancelSubscribe failed:', err);
+            wx.showToast({ title: '取消失败，请重试', icon: 'none' });
+          });
+      },
+    });
   },
 
   doSubscribe(id, templateId) {

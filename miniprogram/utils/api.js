@@ -128,6 +128,13 @@ function mockCall(path, method, data) {
         }
         console.log('[mock] subscribed:', examId, 'remainTimes:', mockSubscribed[examId]);
         resolve({ ok: true, remainTimes: mockSubscribed[examId] || 1 });
+      } else if (path === '/api/subscribe/cancel' && method === 'POST') {
+        const examId = Number((data || {}).examId);
+        const existed = !!mockSubscribed[examId];
+        delete mockSubscribed[examId];
+        mockPersist();
+        console.log('[mock] subscription cancelled:', examId);
+        resolve({ ok: true, removed: existed ? 1 : 0 });
       } else if (path === '/api/subscribe/list' && method === 'GET') {
         const items = Object.keys(mockSubscribed)
           .filter((k) => mockSubscribed[k] > 0)
@@ -196,6 +203,11 @@ function fetchSubscriptions() {
   return call('/api/subscribe/list', 'GET');
 }
 
+/** 取消订阅（删除该节点的推送额度），返回 { ok, removed } */
+function cancelSubscribe(examId) {
+  return call('/api/subscribe/cancel', 'POST', { examId });
+}
+
 /** 我的提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
 function fetchQuota() {
   return call('/api/quota', 'GET');
@@ -212,7 +224,7 @@ function deleteCustom(id) {
 }
 
 module.exports = {
-  call, login, fetchExams, subscribe, fetchSubscriptions,
+  call, login, fetchExams, subscribe, fetchSubscriptions, cancelSubscribe,
   fetchQuota, createCustom, deleteCustom, mockReset,
   IS_MOCK: USE_MOCK,
   ENV_ID, SERVICE, APP_KEY,

@@ -95,6 +95,19 @@ GET /api/subscribe/list
 
 - `examId` 含自建节点（命名空间 id），与 `/api/exams` 返回的 id 同一体系。
 
+### 取消订阅
+
+```
+POST /api/subscribe/cancel
+Body: { "examId": 1 }
+```
+
+返回：`{ "ok": true, "removed": 1 }`
+
+- 直接删除该用户在该节点上的订阅记录，之后不再推送。
+- 前端交互：点已订阅的按钮 → 操作菜单 →「取消订阅」→ 二次确认。
+- 已无订阅记录时同样返回 `ok=true`（`removed=0`），幂等。
+
 ## 4. 手动触发提醒任务
 
 ```

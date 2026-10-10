@@ -102,6 +102,32 @@ public class SubscribeController {
     }
 
     /**
+     * 取消订阅：直接删除该用户在该节点上的订阅记录（不再推送）。
+     * 与「再订一次」相反，用于用户主动退订。
+     */
+    @PostMapping("/cancel")
+    public Map<String, Object> cancel(
+            @RequestHeader(value = "X-WX-FROM-OPENID", required = false) String fromOpenid,
+            @RequestHeader(value = "X-WX-OPENID", required = false) String cloudOpenid,
+            @RequestBody SubscribeReq req) {
+
+        String openid = OpenidSupport.resolve(fromOpenid, cloudOpenid, req == null ? null : req.getOpenid());
+        if (openid == null) {
+            return Map.of("ok", false, "msg", "openid 缺失，请重新进入小程序");
+        }
+        if (req == null || req.getExamId() == null) {
+            return Map.of("ok", false, "msg", "缺少节点 id");
+        }
+
+        int removed = subscriptionMapper.delete(
+                new QueryWrapper<Subscription>()
+                        .eq("openid", openid)
+                        .eq("exam_id", req.getExamId()));
+
+        return Map.of("ok", true, "removed", removed);
+    }
+
+    /**
      * 当前用户已订阅（remain_times > 0）的节点列表，
      * 前端用来把「订阅提醒」按钮渲染成「已订阅」状态。
      * 返回 items: [{examId, remainTimes}]
