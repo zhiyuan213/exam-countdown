@@ -63,13 +63,13 @@ Page({
 
   /**
    * 消息清单：把已订阅的节点汇总成一份列表（官方 + 自定义），按考试日期正序排列。
-   * 用户订阅后这里就会出现对应条目，取消订阅后消失。
+   * 已结束的节点不显示——推送永远不会触发，订阅对用户已无意义。
    */
   buildSubList() {
     const map = this.data.subscribedMap;
     const nodes = this._allNodes || [];
     const list = nodes
-      .filter((n) => map[n.id] > 0)
+      .filter((n) => !n.passed && map[n.id] > 0)
       .map((n) => Object.assign({}, n, { remainTimes: map[n.id] }))
       .sort((a, b) => parseDate(a.examDate) - parseDate(b.examDate));
     this.setData({ subList: list });
