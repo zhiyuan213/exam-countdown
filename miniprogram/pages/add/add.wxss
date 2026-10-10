@@ -1,0 +1,99 @@
+/* 添加自定义提醒 */
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 8rpx 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f1f3;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.label {
+  width: 160rpx;
+  font-size: 30rpx;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.ph {
+  color: #bbb;
+}
+
+.counter {
+  font-size: 22rpx;
+  color: #bbb;
+  margin-left: 12rpx;
+}
+
+.picker {
+  flex: 1;
+  font-size: 30rpx;
+  color: #1a1a1a;
+}
+
+.quota {
+  font-size: 24rpx;
+  color: #888;
+  padding: 0 8rpx 20rpx;
+}
+
+.quota-warn {
+  color: #e94f4f;
+}
+
+.submit {
+  background: #4a90e2 !important;
+  color: #fff !important;
+  font-size: 30rpx !important;
+  border-radius: 44rpx !important;
+  margin: 8rpx 0 32rpx;
+}
+
+.submit::after {
+  border: none;
+}
+
+.submit[disabled] {
+  background: #b9c6d6 !important;
+  color: #fff !important;
+}
+
+.tips {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.tips-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 14rpx;
+}
+
+.tips-item {
+  font-size: 24rpx;
+  color: #888;
+  line-height: 1.7;
+  margin-bottom: 8rpx;
+}
+
+.tips-item b {
+  color: #4a90e2;
+  font-weight: 500;
+}

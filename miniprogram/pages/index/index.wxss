@@ -2,6 +2,61 @@
   margin-bottom: 32rpx;
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.toolbar-hint {
+  font-size: 24rpx;
+  color: #888;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-btn {
+  font-size: 24rpx !important;
+  line-height: 2.2 !important;
+  padding: 0 24rpx !important;
+  background: #4a90e2 !important;
+  color: #fff !important;
+  border-radius: 30rpx !important;
+  margin: 0 0 0 16rpx !important;
+  flex-shrink: 0;
+}
+
+.add-btn::after {
+  border: none;
+}
+
+.btn-row {
+  display: flex;
+  align-items: center;
+}
+
+.delete-btn {
+  font-size: 22rpx !important;
+  line-height: 2.2 !important;
+  padding: 0 20rpx !important;
+  background: #fff !important;
+  color: #e94f4f !important;
+  border: 1rpx solid #f3c2c2 !important;
+  border-radius: 30rpx !important;
+  margin: 0 0 0 12rpx !important;
+}
+
+.delete-btn::after {
+  border: none;
+}
+
 .group-title {
   font-size: 30rpx;
   font-weight: 600;

@@ -5,6 +5,11 @@
   <view wx:elif="{{errorMsg}}" class="empty">{{errorMsg}}</view>
 
   <block wx:else>
+    <view class="toolbar">
+      <text class="toolbar-hint">{{quotaText || '自定义你的提醒'}}</text>
+      <button class="add-btn" size="mini" bindtap="onAdd">+ 添加提醒</button>
+    </view>
+
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
       <view class="group-title">{{item.groupName}}</view>
 
@@ -24,14 +29,24 @@
 
         <view class="node-right">
           <view class="countdown">{{node.daysLabel}}</view>
-          <button
-            class="subscribe-btn"
-            size="mini"
-            data-id="{{node.id}}"
-            data-name="{{node.name}}"
-            data-templateid="{{node.templateId}}"
-            bindtap="onSubscribe"
-          >订阅提醒</button>
+          <view class="btn-row">
+            <button
+              class="subscribe-btn"
+              size="mini"
+              data-id="{{node.id}}"
+              data-name="{{node.name}}"
+              data-templateid="{{node.templateId}}"
+              bindtap="onSubscribe"
+            >订阅提醒</button>
+            <button
+              wx:if="{{node.isCustom}}"
+              class="delete-btn"
+              size="mini"
+              data-id="{{node.id}}"
+              data-name="{{node.name}}"
+              bindtap="onDelete"
+            >删除</button>
+          </view>
         </view>
       </view>
     </view>

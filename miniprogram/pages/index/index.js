@@ -8,6 +8,7 @@ const NODE_LABEL = {
   RETEST: '复试',
   VOLUNTEER: '志愿',
   ADMISSION: '录取',
+  CUSTOM: '自定',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +32,7 @@ Page({
     groups: [],
     highlightId: 0,
     errorMsg: '',
+    quotaText: '',
   },
 
   onLoad(options) {
@@ -40,6 +42,49 @@ Page({
 
   onShow() {
     this.load();
+    this.loadQuota();
+  },
+
+  /** 顶部显示「我的提醒」占用情况，方便用户知道还能加几个 */
+  loadQuota() {
+    api.fetchQuota()
+      .then((q) => {
+        if (q && q.ok !== false && typeof q.remaining === 'number') {
+          this.setData({ quotaText: `我的提醒 ${q.used}/${q.limit}，还可添加 ${q.remaining} 个` });
+        }
+      })
+      .catch((err) => console.error('fetchQuota failed:', err));
+  },
+
+  onAdd() {
+    wx.navigateTo({ url: '/pages/add/add' });
+  },
+
+  onDelete(e) {
+    const { id, name } = e.currentTarget.dataset;
+    wx.showModal({
+      title: '删除提醒',
+      content: `确定删除「${name}」吗？删除后不再推送提醒。`,
+      success: (res) => {
+        if (!res.confirm) {
+          return;
+        }
+        api.deleteCustom(id)
+          .then((r) => {
+            if (r && r.ok) {
+              wx.showToast({ title: '已删除', icon: 'success' });
+              this.load();
+              this.loadQuota();
+            } else {
+              wx.showToast({ title: (r && r.msg) || '删除失败', icon: 'none' });
+            }
+          })
+          .catch((err) => {
+            console.error('deleteCustom failed:', err);
+            wx.showToast({ title: '删除失败，请重试', icon: 'none' });
+          });
+      },
+    });
   },
 
   onPullDownRefresh() {
@@ -80,6 +125,7 @@ Page({
         daysLabel: this.daysLabel(days),
         urgent: days >= 0 && days <= 7,
         passed: days < 0,
+        isCustom: !!item.isCustom,
       };
       const key = item.groupCode || 'other';
       if (!map[key]) {

@@ -24,16 +24,75 @@ const APP_KEY = 'main';
 const USE_MOCK = true;
 const mockData = require('./mock-data');
 
+// ---- mock 专用状态：自建提醒存在内存里，方便开发者工具里验证增删 ----
+const MOCK_ID_BASE = 1000000000;   // 与后端 UserExam.ID_BASE 保持一致
+const MOCK_FREE_QUOTA = 3;
+let mockCustom = [];
+let mockCustomSeq = 1;
+
+function todayStr() {
+  const d = new Date();
+  const p = (n) => (n < 10 ? '0' + n : '' + n);
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+function mockQuota() {
+  const used = mockCustom.filter((x) => x.examDate >= todayStr()).length;
+  return {
+    ok: true,
+    freeQuota: MOCK_FREE_QUOTA,
+    paidQuota: 0,
+    limit: MOCK_FREE_QUOTA,
+    used,
+    remaining: Math.max(MOCK_FREE_QUOTA - used, 0),
+  };
+}
+
 /** mock 模式下模拟后端接口返回 */
-function mockCall(path, method) {
+function mockCall(path, method, data) {
   return new Promise((resolve) => {
     setTimeout(() => {
       if (path === '/api/exams' && method === 'GET') {
-        resolve(mockData);
+        resolve(mockData.concat(mockCustom));
+      } else if (path === '/api/quota' && method === 'GET') {
+        resolve(mockQuota());
+      } else if (path === '/api/exams/custom' && method === 'POST') {
+        const body = data || {};
+        const q = mockQuota();
+        if (!body.name || !body.examDate) {
+          resolve({ ok: false, msg: '请填写名称和日期' });
+          return;
+        }
+        if (q.remaining <= 0) {
+          resolve({
+            ok: false,
+            code: 'QUOTA_EXCEEDED',
+            msg: '提醒额度已用完（' + q.used + '/' + q.limit + '），删除旧提醒后再添加',
+            quota: q,
+          });
+          return;
+        }
+        const item = {
+          id: MOCK_ID_BASE + mockCustomSeq++,
+          name: body.name,
+          examDate: body.examDate,
+          templateId: (mockData[0] && mockData[0].templateId) || '',
+          nodeType: 'CUSTOM',
+          groupCode: 'custom',
+          groupName: '我的提醒',
+          sort: 0,
+          isCustom: true,
+        };
+        mockCustom.push(item);
+        resolve({ ok: true, item, quota: mockQuota() });
+      } else if (path.indexOf('/api/exams/custom/') === 0 && method === 'DELETE') {
+        const id = Number(path.split('/').pop());
+        mockCustom = mockCustom.filter((x) => x.id !== id);
+        resolve({ ok: true, quota: mockQuota() });
       } else if (path === '/api/subscribe' && method === 'POST') {
         resolve({ ok: true, remainTimes: 1 });
       } else if (path === '/api/auth/login') {
-        resolve({ ok: true, mock: true });
+        resolve({ ok: true, mock: true, openid: 'mock-openid' });
       } else {
         resolve({});
       }
@@ -50,7 +109,7 @@ function ensureInit() {
 }
 
 function call(path, method = 'GET', data = null) {
-  if (USE_MOCK) return mockCall(path, method);
+  if (USE_MOCK) return mockCall(path, method, data);
   ensureInit();
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
@@ -85,9 +144,28 @@ function fetchExams() {
   return call('/api/exams', 'GET');
 }
 
-/** 订阅提醒，返回 { ok, remainTimes } */
+/** 订阅提醒，返回 { ok, remainTimes }。自建节点的 examId 走命名空间 id，同样透传即可 */
 function subscribe(examId) {
   return call('/api/subscribe', 'POST', { examId });
 }
 
-module.exports = { call, login, fetchExams, subscribe, ENV_ID, SERVICE, APP_KEY };
+/** 我的提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
+function fetchQuota() {
+  return call('/api/quota', 'GET');
+}
+
+/** 新建自定义提醒，返回 { ok, item, quota } */
+function createCustom(payload) {
+  return call('/api/exams/custom', 'POST', payload);
+}
+
+/** 删除自定义提醒，返回 { ok, quota }。id 用 /api/exams 返回的那个 id */
+function deleteCustom(id) {
+  return call('/api/exams/custom/' + id, 'DELETE');
+}
+
+module.exports = {
+  call, login, fetchExams, subscribe,
+  fetchQuota, createCustom, deleteCustom,
+  ENV_ID, SERVICE, APP_KEY,
+};

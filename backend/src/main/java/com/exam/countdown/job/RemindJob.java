@@ -4,9 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.exam.countdown.entity.Exam;
 import com.exam.countdown.entity.PushLog;
 import com.exam.countdown.entity.Subscription;
+import com.exam.countdown.entity.UserExam;
 import com.exam.countdown.mapper.ExamMapper;
 import com.exam.countdown.mapper.PushLogMapper;
 import com.exam.countdown.mapper.SubscriptionMapper;
+import com.exam.countdown.mapper.UserExamMapper;
 import com.exam.countdown.service.WxMessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ public class RemindJob {
     private final ExamMapper examMapper;
     private final SubscriptionMapper subscriptionMapper;
     private final PushLogMapper pushLogMapper;
+    private final UserExamMapper userExamMapper;
     private final WxMessageService wxMessageService;
 
     /** 全局默认模板 ID；exam.template_id 为空时用它 */
@@ -48,24 +51,31 @@ public class RemindJob {
     @Value("${remind.nodes:30,7,1,0}")
     private String nodesConfig;
 
+    /**
+     * 自建提醒的提醒节点，默认「考前 1 天 + 当天」。
+     * 不做 30/7 天那么多点：一次性订阅每推一条都要用户当场授权，点太多授权体验很差。
+     */
+    @Value("${remind.custom-nodes:1,0}")
+    private String customNodesConfig;
+
     public RemindJob(ExamMapper examMapper,
                      SubscriptionMapper subscriptionMapper,
                      PushLogMapper pushLogMapper,
+                     UserExamMapper userExamMapper,
                      WxMessageService wxMessageService) {
         this.examMapper = examMapper;
         this.subscriptionMapper = subscriptionMapper;
         this.pushLogMapper = pushLogMapper;
+        this.userExamMapper = userExamMapper;
         this.wxMessageService = wxMessageService;
     }
 
     @Scheduled(cron = "${remind.cron}", zone = "Asia/Shanghai")
     public void run() {
         LocalDate today = LocalDate.now();
-        Set<Integer> nodes = new HashSet<>();
-        for (String s : nodesConfig.split(",")) {
-            nodes.add(Integer.parseInt(s.trim()));
-        }
 
+        // ---------- 官方节点：考前 30/7/1 天及当天 ----------
+        Set<Integer> nodes = parseNodes(nodesConfig, "30,7,1,0");
         for (Exam exam : examMapper.selectList(new QueryWrapper<Exam>().eq("status", 1))) {
             long days = ChronoUnit.DAYS.between(today, exam.getExamDate());
             if (nodes.contains((int) days)) {
@@ -74,6 +84,31 @@ public class RemindJob {
                 pushExam(exam, days, nodeName);
             }
         }
+
+        // ---------- 用户自建节点：默认只在考前 1 天与当天提醒 ----------
+        Set<Integer> customNodes = parseNodes(customNodesConfig, "1,0");
+        for (UserExam ue : userExamMapper.selectList(new QueryWrapper<UserExam>()
+                .eq("status", 1)
+                .ge("exam_date", today))) {
+            long days = ChronoUnit.DAYS.between(today, ue.getExamDate());
+            if (customNodes.contains((int) days)) {
+                String nodeName = days == 0L ? "DAY" : "D" + days;
+                log.info("命中自建提醒节点 userExam={} name={} node={}", ue.getId(), ue.getName(), nodeName);
+                pushCustom(ue, days, nodeName);
+            }
+        }
+    }
+
+    private Set<Integer> parseNodes(String config, String fallback) {
+        Set<Integer> nodes = new HashSet<>();
+        String src = (config == null || config.isBlank()) ? fallback : config;
+        for (String s : src.split(",")) {
+            String t = s.trim();
+            if (!t.isEmpty()) {
+                nodes.add(Integer.parseInt(t));
+            }
+        }
+        return nodes;
     }
 
     private void pushExam(Exam exam, long days, String nodeName) {
@@ -120,6 +155,53 @@ public class RemindJob {
         }
     }
 
+    /**
+     * 自建提醒推送。exam_id 用命名空间 id（UserExam.ID_BASE + user_exam.id），
+     * 模板取用户自己那条（建库时已写入全局默认），跳回首页并定位高亮该节点。
+     */
+    private void pushCustom(UserExam ue, long days, String nodeName) {
+        long publicId = UserExam.toPublicId(ue.getId());
+        String tplId = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
+                ? ue.getTemplateId() : templateId;
+
+        for (Subscription sub : subscriptionMapper.selectList(
+                new QueryWrapper<Subscription>()
+                        .eq("exam_id", publicId)
+                        .gt("remain_times", 0))) {
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("thing1", Map.of("value", truncate(ue.getName(), 20)));
+            data.put("time2", Map.of("value", ue.getExamDate().atTime(9, 0).format(CN_DATETIME)));
+            data.put("number3", Map.of("value", String.valueOf(days)));
+            data.put("thing4", Map.of("value", truncate(nodeTip("CUSTOM", days), 20)));
+
+            int errcode = wxMessageService.send(
+                    sub.getOpenid(), tplId,
+                    "pages/index/index?examId=" + publicId,
+                    data, ue.getAppid());
+
+            PushLog pl = new PushLog();
+            pl.setOpenid(sub.getOpenid());
+            pl.setExamId(publicId);
+            pl.setNodeName(nodeName);
+
+            if (errcode == 0) {
+                sub.setRemainTimes(sub.getRemainTimes() - 1);
+                subscriptionMapper.updateById(sub);
+                pl.setResult("OK");
+            } else if (errcode == 43101) { // 用户拒收：额度清零
+                sub.setRemainTimes(0);
+                subscriptionMapper.updateById(sub);
+                pl.setResult("FAIL");
+                pl.setErrMsg("用户拒收 43101");
+            } else {
+                pl.setResult("FAIL");
+                pl.setErrMsg("errcode=" + errcode);
+            }
+            pushLogMapper.insert(pl);
+        }
+    }
+
     private String truncate(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max);
     }
@@ -139,6 +221,9 @@ public class RemindJob {
             case "RETEST":
                 return days == 0L ? "今天复试/面试，加油！记得再订阅"
                         : "距复试还有" + days + "天，加油";
+            case "CUSTOM":
+                return days == 0L ? "今天就是你设的提醒日，记得再订阅"
+                        : "距你设置的日子还有" + days + "天，记得再订阅";
             case "EXAM":
             default:
                 return days == 0L ? "今天考试，加油！记得再订阅"

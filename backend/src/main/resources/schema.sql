@@ -49,6 +49,41 @@ CREATE TABLE IF NOT EXISTS push_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推送日志';
 
 -- ============================================================
+-- 用户自建提醒（「我的提醒」）
+-- 与官方节点表 exam 分开存：exam 是运营配置的官方节点，本表是用户自己加的节点。
+-- ⚠️ 刻意不对 exam 表做 ALTER —— schema.sql 每次启动都会执行，
+--    ALTER TABLE ADD COLUMN 在 MySQL 里不幂等，重复执行会让服务启动失败。
+-- ID 命名空间约定（见 UserExam.ID_BASE）：
+--    官方节点 id < 1000000000；自建节点对前端暴露的 id = 1000000000 + 本表 id。
+--    subscription.exam_id 沿用同一套 id，从而一张订阅表同时覆盖两类节点。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_exam (
+  id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+  openid      VARCHAR(64) NOT NULL COMMENT '创建者 openid',
+  name        VARCHAR(64) NOT NULL COMMENT '提醒名称，≤20字（订阅消息 thing 字段限制）',
+  exam_date   DATE NOT NULL COMMENT '目标日期',
+  template_id VARCHAR(64) NULL COMMENT '订阅消息模板ID（空则用全局默认）',
+  appid       VARCHAR(32) NULL COMMENT '所属小程序 AppID（矩阵化预留）',
+  status      TINYINT DEFAULT 1 COMMENT '1 有效 0 已删除',
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_owner (openid, status),
+  KEY idx_date (exam_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户自建提醒表';
+
+-- ============================================================
+-- 用户额度表。limit = free_quota + paid_quota 表示「可同时管理的未过期提醒数」。
+-- free_quota 默认 3（免费额度）；paid_quota 由支付回调累加（二期接入虚拟支付）。
+-- 额度按「当前有效提醒数」实时计算，删除或过期即释放，不做扣减累计，避免退款纠纷。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_quota (
+  openid      VARCHAR(64) PRIMARY KEY COMMENT '用户 openid',
+  free_quota  INT NOT NULL DEFAULT 3 COMMENT '免费额度（可同时管理的提醒数）',
+  paid_quota  INT NOT NULL DEFAULT 0 COMMENT '已购额度（累加）',
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户提醒额度表';
+
+-- ============================================================
 -- 种子数据：考研的全部节点（新装库执行）
 -- ⚠️ 日期核对说明：
 --    报名/报名截止/准考证/初试 = 官方已公布口径，仍需上线前再核对一遍；

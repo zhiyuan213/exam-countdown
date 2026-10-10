@@ -1,0 +1,54 @@
+<view class="container">
+
+  <view class="card">
+    <view class="field">
+      <text class="label">提醒名称</text>
+      <input
+        class="input"
+        placeholder="如：雅思口语考试"
+        placeholder-class="ph"
+        maxlength="20"
+        value="{{name}}"
+        bindinput="onNameInput"
+      />
+      <text class="counter">{{name.length}}/20</text>
+    </view>
+
+    <view class="field">
+      <text class="label">日期</text>
+      <picker
+        mode="date"
+        value="{{date}}"
+        start="{{minDate}}"
+        end="{{maxDate}}"
+        bindchange="onDateChange"
+      >
+        <view class="picker">{{date || '请选择日期'}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <view class="quota">
+    <block wx:if="{{quota}}">
+      <text wx:if="{{quota.remaining > 0}}">免费额度剩余 {{quota.remaining}} 个（已用 {{quota.used}}/{{quota.limit}}）</text>
+      <text wx:else class="quota-warn">额度已用完（{{quota.used}}/{{quota.limit}}），请先回首页删除旧的提醒</text>
+    </block>
+    <text wx:else>额度查询中…</text>
+  </view>
+
+  <button
+    class="submit"
+    bindtap="onSubmit"
+    loading="{{submitting}}"
+    disabled="{{submitting || (quota && quota.remaining <= 0)}}"
+  >保存并订阅提醒</button>
+
+  <view class="tips">
+    <view class="tips-title">提醒机制说明</view>
+    <view class="tips-item">1. 微信规定「一次授权只能推送一条」，所以会在<b>考前 1 天</b>和<b>当天</b>各提醒一次</view>
+    <view class="tips-item">2. 想收到提醒，保存时需要点「允许」授权；没授权也不会报错，之后可以在首页补订</view>
+    <view class="tips-item">3. 提醒过期后会自动释放额度，可以继续添加新的</view>
+    <view class="tips-item">4. 同一账号可同时管理的提醒数量有限，删除即释放</view>
+  </view>
+
+</view>

@@ -4,8 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.exam.countdown.dto.SubscribeReq;
 import com.exam.countdown.entity.Exam;
 import com.exam.countdown.entity.Subscription;
+import com.exam.countdown.entity.UserExam;
 import com.exam.countdown.mapper.ExamMapper;
 import com.exam.countdown.mapper.SubscriptionMapper;
+import com.exam.countdown.mapper.UserExamMapper;
+import com.exam.countdown.support.OpenidSupport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +16,11 @@ import java.util.Map;
 
 /**
  * 订阅提醒。一次调用 = 一次推送额度（remain_times +1）。
+ *
+ * 两类节点共用本接口：
+ *   - 官方节点：examId 直接是 exam.id
+ *   - 用户自建节点：examId = UserExam.ID_BASE + user_exam.id
+ * subscription.exam_id 存的就是这个「对前端暴露的 id」，推送时按同一规则回查。
  */
 @RestController
 @RequestMapping("/api/subscribe")
@@ -20,13 +28,17 @@ public class SubscribeController {
 
     private final SubscriptionMapper subscriptionMapper;
     private final ExamMapper examMapper;
+    private final UserExamMapper userExamMapper;
 
-    @Value("${wx.template-id}")
+    @Value("${wx.template-id:}")
     private String templateId;
 
-    public SubscribeController(SubscriptionMapper subscriptionMapper, ExamMapper examMapper) {
+    public SubscribeController(SubscriptionMapper subscriptionMapper,
+                               ExamMapper examMapper,
+                               UserExamMapper userExamMapper) {
         this.subscriptionMapper = subscriptionMapper;
         this.examMapper = examMapper;
+        this.userExamMapper = userExamMapper;
     }
 
     @PostMapping
@@ -35,27 +47,40 @@ public class SubscribeController {
             @RequestHeader(value = "X-WX-OPENID", required = false) String cloudOpenid,
             @RequestBody SubscribeReq req) {
 
-        String openid = firstNotBlank(fromOpenid, cloudOpenid);
+        String openid = OpenidSupport.resolve(fromOpenid, cloudOpenid, req == null ? null : req.getOpenid());
         if (openid == null) {
-            openid = req.getOpenid();
-        }
-        if (openid == null || openid.isBlank()) {
             return Map.of("ok", false, "msg", "openid 缺失，请重新进入小程序");
         }
+        if (req == null || req.getExamId() == null) {
+            return Map.of("ok", false, "msg", "缺少节点 id");
+        }
 
-        Exam exam = examMapper.selectById(req.getExamId());
-        if (exam == null) {
-            return Map.of("ok", false, "msg", "考试不存在");
+        String tpl;
+        if (UserExam.isCustomId(req.getExamId())) {
+            // 自建节点：必须是自己创建的，才允许登记订阅额度
+            Long localId = UserExam.toLocalId(req.getExamId());
+            UserExam ue = localId == null ? null : userExamMapper.selectById(localId);
+            if (ue == null || ue.getStatus() == null || ue.getStatus() != 1) {
+                return Map.of("ok", false, "msg", "提醒不存在或已删除");
+            }
+            if (!openid.equals(ue.getOpenid())) {
+                return Map.of("ok", false, "msg", "无权订阅他人的提醒");
+            }
+            tpl = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
+                    ? ue.getTemplateId() : templateId;
+        } else {
+            Exam exam = examMapper.selectById(req.getExamId());
+            if (exam == null) {
+                return Map.of("ok", false, "msg", "考试不存在");
+            }
+            tpl = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
+                    ? exam.getTemplateId() : templateId;
         }
 
         Subscription sub = subscriptionMapper.selectOne(
                 new QueryWrapper<Subscription>()
                         .eq("openid", openid)
                         .eq("exam_id", req.getExamId()));
-
-        // 模板 ID 以后端配置为准
-        String tpl = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
-                ? exam.getTemplateId() : templateId;
 
         if (sub == null) {
             sub = new Subscription();
@@ -70,12 +95,5 @@ public class SubscribeController {
             subscriptionMapper.updateById(sub);
         }
         return Map.of("ok", true, "remainTimes", sub.getRemainTimes());
-    }
-
-    private static String firstNotBlank(String a, String b) {
-        if (a != null && !a.isBlank()) {
-            return a.trim();
-        }
-        return (b != null && !b.isBlank()) ? b.trim() : null;
     }
 }

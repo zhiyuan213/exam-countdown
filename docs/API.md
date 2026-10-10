@@ -124,3 +124,75 @@ GET /api/job/remind?token=<REMIND_JOB_TOKEN>
 | `43101` | 用户拒收 | 正常，置额度为 0 |
 | `40001` / `42001` | access_token 失效 | 已实现自动 `refresh()` 重试一次 |
 | `-1` | 微信侧系统繁忙 | 早期偶发 |
+
+---
+
+## 5. 我的提醒（用户自建提醒）· 2026-10 新增
+
+### ID 命名空间（重要）
+
+官方节点与自建节点共用 `subscription.exam_id`，靠数值区间区分：
+
+| 区间 | 含义 |
+|---|---|
+| `< 1000000000` | 官方节点，值 = `exam.id` |
+| `>= 1000000000` | 自建节点，值 = `1000000000 + user_exam.id`（见 `UserExam.ID_BASE`） |
+
+前端拿到 `/api/exams` 里的 `id` 后原样透传给 `/api/subscribe`、`DELETE /api/exams/custom/{id}` 即可，不需要自己换算。
+
+### 额度规则
+
+- `limit = user_quota.free_quota(默认 3) + user_quota.paid_quota`
+- `used` = 该用户 `user_exam` 中 `status=1` 且 `exam_date >= 今天` 的条数
+- 删除提醒或提醒过期 → 自动释放，不做扣减累计（避免退款纠纷）
+- 二期接入虚拟支付后，支付回调调用 `QuotaService.addPaidQuota(openid, delta)`
+
+### 接口
+
+**我的提醒列表 + 额度**
+
+```
+GET /api/exams/custom
+→ { "ok": true, "quota": {...}, "items": [ {id, name, examDate, templateId, nodeType:"CUSTOM", groupCode:"custom", groupName:"我的提醒", sort:0, isCustom:true, daysLeft} ] }
+```
+
+**新建提醒**
+
+```
+POST /api/exams/custom
+Body: { "name": "雅思口语考试", "examDate": "2026-12-01" }
+→ 成功 { "ok": true, "item": {...}, "quota": {...} }
+→ 额度不足 { "ok": false, "code": "QUOTA_EXCEEDED", "msg": "...", "quota": {...} }
+```
+
+校验：`name` 非空且 ≤20 字（订阅消息 `thing` 字段限制）、`examDate` 不早于今天。建库时把全局默认模板 ID 写入 `user_exam.template_id`，前端直接拿它去 `wx.requestSubscribeMessage`。
+
+**删除提醒**
+
+```
+DELETE /api/exams/custom/{id}
+→ { "ok": true, "quota": {...} }
+```
+
+逻辑删除（`status=0`），同时清理该节点的 `subscription` 记录。
+
+**查询额度**
+
+```
+GET /api/quota
+→ { "ok": true, "freeQuota": 3, "paidQuota": 0, "limit": 3, "used": 1, "remaining": 2 }
+```
+
+### `/api/exams` 的变化
+
+带 openid（云托管注入）请求时，返回值会**追加**该用户的自建节点（`isCustom: true`，分组 `我的提醒`）；官方节点字段与历史版本完全一致，仅多一个 `isCustom: false`。前端按 `groupCode` 分组渲染，自建节点排在最后。
+
+### 自建提醒的推送
+
+- 命中节点：`remind.custom-nodes`，默认 `1,0`（**考前 1 天 + 当天**）
+  - 刻意不给自建提醒配 30/7 天：一次性订阅每推一条都要用户当场授权，提醒点太多会劝退用户
+  - 想改直接在云托管环境变量里配 `REMIND_CUSTOM_NODES=7,1,0`
+- `node_type` 固定为 `CUSTOM`，`thing4` 文案：`距你设置的日子还有 N 天，记得再订阅` / `今天就是你设的提醒日，记得再订阅`
+- 跳转页同样带 `examId`，用命名空间 id 定位并高亮
+- 额度扣减、`43101` 处理与官方节点一致
+
