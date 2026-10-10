@@ -17,28 +17,13 @@
   transition: none;
 }
 
-/* 翻页日历（下拉刷新图标）：三层叠放，上翻盖绕中轴线翻转 */
+/* 翻页日历（下拉刷新图标）：底层完整图片在文档流里撑起盒子，上翻盖绝对定位只盖住上半页 */
 .cal-flip {
   position: relative;
   width: 56rpx;
-  height: 56rpx;
-  margin-bottom: 4rpx;
-}
-
-.cal-half {
-  position: absolute;
-  left: 0;
-  width: 56rpx;
-  height: 28rpx;
-  overflow: hidden;
-}
-
-.cal-half-top {
-  top: 0;
-}
-
-.cal-half-bottom {
-  top: 28rpx;
+  flex: none;
+  line-height: 0;
+  margin-bottom: 10rpx;
 }
 
 .cal-img {
@@ -47,8 +32,14 @@
   height: 56rpx;
 }
 
-.cal-img-bottom {
-  margin-top: -28rpx;
+/* 上翻盖：只露出图片上半部分，绕底边翻转 */
+.cal-half {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56rpx;
+  height: 28rpx;
+  overflow: hidden;
 }
 
 .cal-flap {

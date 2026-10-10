@@ -41,16 +41,11 @@
 
   <!-- 自定义下拉刷新区（京东样式：随下拉距离动态变化） -->
   <view wx:if="{{pullH > 0}}" class="pull-zone {{dragging ? 'dragging' : ''}}" style="height:{{pullH}}px">
-    <!-- 翻页日历：下半页静态 + 上半页静态 + 上翻盖（随下拉角度翻转） -->
+    <!-- 翻页日历：底层完整日历（正常文档流，撑起盒子、保证与文字固定间距）+ 上翻盖（上半页，随下拉角度翻转） -->
     <view class="cal-flip {{refreshing ? 'cal-flipping' : ''}}">
-      <view class="cal-half cal-half-bottom">
-        <image class="cal-img cal-img-bottom" src="/images/calendar-red.png" />
-      </view>
-      <view class="cal-half cal-half-top">
-        <image class="cal-img" src="/images/calendar-red.png" />
-      </view>
+      <image class="cal-img" src="/images/calendar-red.png" />
       <view
-        class="cal-half cal-half-top cal-flap"
+        class="cal-half cal-flap"
         style="{{refreshing ? '' : 'transform: perspective(240rpx) rotateX(-' + pullFlip + 'deg)'}}"
       >
         <image class="cal-img" src="/images/calendar-red.png" />
