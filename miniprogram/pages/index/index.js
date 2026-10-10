@@ -98,14 +98,16 @@ Page({
         // 还没错过的提醒点，按时间正序；每次推送消耗 1 次额度，
         // 剩余 N 次就列出接下来 N 个推送时间点（额度用完即止）
         const examTs = parseDate(n.examDate);
-        const upcoming = (REMIND_NODES[n.nodeType] || [1, 0])
+        const pushTimes = (REMIND_NODES[n.nodeType] || [1, 0])
           .filter((d) => d <= days)
           .sort((a, b) => a - b)
           .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`);
-        const nextPush = (upcoming.length ? upcoming : [`${n.examDate} ${PUSH_TIME}`])
-          .slice(0, map[n.id])
-          .join('、');
-        return Object.assign({}, n, { remainTimes: map[n.id], nextPush });
+        if (pushTimes.length === 0) pushTimes.push(`${n.examDate} ${PUSH_TIME}`);
+        return Object.assign({}, n, {
+          remainTimes: map[n.id],
+          // 剩余 N 次就展示接下来 N 个推送时间点（每次推送消耗 1 次额度）
+          pushTimes: pushTimes.slice(0, map[n.id]),
+        });
       })
       .sort((a, b) => parseDate(a.examDate) - parseDate(b.examDate));
     this.setData({ subList: list });

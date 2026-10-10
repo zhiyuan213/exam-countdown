@@ -66,7 +66,10 @@
             <text class="badge">{{item.nodeLabel}}</text>
             <text class="sub-name">{{item.name}}</text>
           </view>
-          <view class="sub-date">提醒时间 {{item.nextPush}} · 剩余 {{item.remainTimes}} 次</view>
+          <view class="sub-date">
+            <view>提醒剩余 {{item.remainTimes}} 次</view>
+            <view wx:for="{{item.pushTimes}}" wx:for-item="t" wx:key="*this">{{t}}</view>
+          </view>
         </view>
         <text class="days-pill {{item.urgent ? 'days-pill--urgent' : ''}}">{{item.daysLabel}}</text>
       </view>

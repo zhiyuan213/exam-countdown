@@ -133,6 +133,7 @@
   font-size: 22rpx;
   color: #9099a8;
   margin-top: 10rpx;
+  line-height: 1.5;
 }
 
 /* 倒计时胶囊：消息清单用，紧急红色 */
