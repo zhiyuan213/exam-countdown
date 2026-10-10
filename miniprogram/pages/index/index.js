@@ -31,6 +31,7 @@ Page({
     loading: true,
     groups: [],
     customNodes: [],
+    subList: [],
     highlightId: 0,
     errorMsg: '',
     quotaText: '',
@@ -55,9 +56,23 @@ Page({
         if (!r || !r.ok) return;
         const map = {};
         (r.items || []).forEach((it) => { map[it.examId] = it.remainTimes; });
-        this.setData({ subscribedMap: map });
+        this.setData({ subscribedMap: map }, () => this.buildSubList());
       })
       .catch((err) => console.error('fetchSubscriptions failed:', err));
+  },
+
+  /**
+   * 消息清单：把已订阅的节点汇总成一份列表（官方 + 自定义），按考试日期正序排列。
+   * 用户订阅后这里就会出现对应条目，取消订阅后消失。
+   */
+  buildSubList() {
+    const map = this.data.subscribedMap;
+    const nodes = this._allNodes || [];
+    const list = nodes
+      .filter((n) => map[n.id] > 0)
+      .map((n) => Object.assign({}, n, { remainTimes: map[n.id] }))
+      .sort((a, b) => parseDate(a.examDate) - parseDate(b.examDate));
+    this.setData({ subList: list });
   },
 
   /** 顶部显示自定义提醒占用情况，方便用户知道还能加几个 */
@@ -97,7 +112,7 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               delete map[id];
-              this.setData({ subscribedMap: map });
+              this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: '已删除', icon: 'success' });
               this.load();
               this.loadQuota();
@@ -122,11 +137,13 @@ Page({
     return api.fetchExams()
       .then((list) => {
         const built = this.buildGroups(list || []);
+        // 供「消息清单」按 examId 回查节点信息（官方 + 自定义）
+        this._allNodes = built.custom.concat(built.official.reduce((acc, g) => acc.concat(g.nodes), []));
         this.setData({
           customNodes: built.custom,
           groups: built.official,
           loading: false,
-        });
+        }, () => this.buildSubList());
       })
       .catch((err) => {
         console.error('fetchExams failed:', err);
@@ -205,29 +222,43 @@ Page({
       wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
       return;
     }
-
-    // 已订阅过：弹出操作菜单
-    const remain = this.data.subscribedMap[id];
-    if (remain > 0) {
-      const items = ['再订一次（+1 条推送额度）', '取消订阅'];
-      if (iscustom) {
-        items.push('删除提醒');
-      }
-      wx.showActionSheet({
-        itemList: items,
-        success: (res) => {
-          if (res.tapIndex === 0) {
-            this.doSubscribe(id, templateId);
-          } else if (res.tapIndex === 1) {
-            this.doCancel(id, name);
-          } else if (res.tapIndex === 2) {
-            this.doDelete(id, name);
-          }
-        },
-      });
+    if (this.data.subscribedMap[id] > 0) {
+      this.openActions(id, name, iscustom, templateId);
       return;
     }
     this.doSubscribe(id, templateId);
+  },
+
+  /** 点击「消息清单」里的条目：与卡片按钮走同一套操作菜单 */
+  onSubRowTap(e) {
+    const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
+    if (this.data.subscribedMap[id] > 0) {
+      this.openActions(id, name, iscustom, templateId || '');
+      return;
+    }
+    if (templateId) {
+      this.doSubscribe(id, templateId);
+    }
+  },
+
+  /** 已订阅节点的操作菜单 */
+  openActions(id, name, iscustom, templateId) {
+    const items = ['再订一次（+1 条推送额度）', '取消订阅'];
+    if (iscustom) {
+      items.push('删除提醒');
+    }
+    wx.showActionSheet({
+      itemList: items,
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          this.doSubscribe(id, templateId);
+        } else if (res.tapIndex === 1) {
+          this.doCancel(id, name);
+        } else if (res.tapIndex === 2) {
+          this.doDelete(id, name);
+        }
+      },
+    });
   },
 
   /** 取消订阅：二次确认后删除该节点的推送额度 */
@@ -244,7 +275,7 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               delete map[id];
-              this.setData({ subscribedMap: map });
+              this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: '已取消订阅', icon: 'success' });
             } else {
               wx.showToast({ title: (r && r.msg) || '取消失败，请重试', icon: 'none' });
@@ -271,7 +302,7 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               map[id] = r.remainTimes;
-              this.setData({ subscribedMap: map });
+              this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: `已订阅，剩余 ${r.remainTimes} 次`, icon: 'none' });
             } else {
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });

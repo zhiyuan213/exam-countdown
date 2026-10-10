@@ -43,6 +43,55 @@
   padding: 8rpx 8rpx 16rpx;
 }
 
+/* 消息清单：已订阅节点的汇总列表 */
+.sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  border-left: 6rpx solid #7fb2e8;
+}
+
+.sub-row--passed {
+  opacity: 0.5;
+}
+
+.sub-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-head {
+  display: flex;
+  align-items: center;
+}
+
+.sub-name {
+  font-size: 28rpx;
+  color: #333;
+  margin-left: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub-date {
+  font-size: 22rpx;
+  color: #9099a8;
+  margin-top: 8rpx;
+}
+
+.sub-days {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #4a90e2;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
 .add-entry {
   display: block !important;
   width: 100% !important;

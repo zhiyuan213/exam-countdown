@@ -39,6 +39,35 @@
   <view wx:elif="{{errorMsg}}" class="empty">{{errorMsg}}</view>
 
   <block wx:else>
+    <view class="group group--subs">
+      <view class="group-head">
+        <text class="group-title">消息清单</text>
+        <text class="group-hint">{{subList.length ? '共 ' + subList.length + ' 条' : ''}}</text>
+      </view>
+
+      <view wx:if="{{subList.length === 0}}" class="mine-empty">还没有订阅，点下方节点的「订阅提醒」后会出现在这里</view>
+
+      <view
+        wx:for="{{subList}}"
+        wx:key="id"
+        class="sub-row {{item.passed ? 'sub-row--passed' : ''}}"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        data-iscustom="{{item.isCustom}}"
+        data-templateid="{{item.templateId}}"
+        bindtap="onSubRowTap"
+      >
+        <view class="sub-main">
+          <view class="sub-head">
+            <text class="badge">{{item.nodeLabel}}</text>
+            <text class="sub-name">{{item.name}}</text>
+          </view>
+          <view class="sub-date">{{item.examDate}} · 剩余 {{item.remainTimes}} 次推送</view>
+        </view>
+        <view class="sub-days">{{item.daysLabel}}</view>
+      </view>
+    </view>
+
     <view class="group group--mine">
       <view class="group-head">
         <text class="group-title">自定义提醒</text>
