@@ -9,7 +9,7 @@
  */
 
 // ⚠️ 改成你的云托管环境 ID（控制台 → 云托管 → 环境设置里能看到，形如 prod-xxxx-xxxxxxxx）
-const ENV_ID = 'YOUR-CLOUDBASE-ENV-ID';
+const ENV_ID = 'prod-exam-d9g96663daa04cb57';
 
 // 云托管服务名
 const SERVICE = 'exam-backend';
@@ -20,8 +20,8 @@ const APP_KEY = 'main';
 
 // ★ 本地开发验证开关：true = 不请求后端，直接用 utils/mock-data.js 的数据
 //   （数据来自 db/restore.sql 的线上真实 exam 表，app_key=main 且 status=1）
-//   验证完改回 false 即恢复云托管调用，不影响任何线上逻辑。
-const USE_MOCK = true;
+//   ⚠️ 当前为 false = 生产链路，走云托管真实接口；本地离线调试时才临时改回 true。
+const USE_MOCK = false;
 const mockData = require('./mock-data');
 
 // ---- mock 专用状态：自建提醒持久化到本地存储，重编译不丢，方便开发者工具里验证增删 ----
