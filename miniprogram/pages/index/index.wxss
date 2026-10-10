@@ -52,6 +52,9 @@
 }
 
 .add-entry {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   font-size: 26rpx !important;
   line-height: 2.6 !important;
   background: #fff !important;
