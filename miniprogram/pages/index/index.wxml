@@ -1,9 +1,13 @@
 <template name="nodeItem">
   <view
     class="node {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
+    hover-class="node--tap"
+    hover-stay-time="80"
     data-id="{{node.id}}"
     data-name="{{node.name}}"
     data-iscustom="{{node.isCustom}}"
+    data-templateid="{{node.templateId}}"
+    bindtap="onNodeTap"
     bindlongpress="onNodeLongpress"
   >
     <view class="node-main">
@@ -25,7 +29,7 @@
           data-name="{{node.name}}"
           data-iscustom="{{node.isCustom}}"
           data-templateid="{{node.templateId}}"
-          bindtap="onSubscribe"
+          catchtap="onSubscribe"
         >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
       </view>
     </view>

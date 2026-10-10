@@ -197,7 +197,14 @@
 
 .node--highlight {
   box-shadow: 0 0 0 3rpx #4a90e2 inset;
-}.node-main {
+}
+
+/* 整行可点：按下时的反馈 */
+.node--tap {
+  background: #f5f9fe;
+}
+
+.node-main {
   flex: 1;
   min-width: 0;
 }
@@ -247,9 +254,9 @@
 }
 
 .subscribe-btn {
-  font-size: 22rpx !important;
+  font-size: 24rpx !important;
   line-height: 2.2 !important;
-  padding: 0 20rpx !important;
+  padding: 0 22rpx !important;
   background: #4a90e2 !important;
   color: #fff !important;
   border-radius: 30rpx !important;

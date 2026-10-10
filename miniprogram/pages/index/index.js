@@ -250,6 +250,30 @@ Page({
   },
 
   /**
+   * 点击节点整行（不再只点那个小按钮，按钮太小不好点）：
+   * 已结束 → 提示无法订阅；
+   * 已订阅 → 操作菜单：再订一次 / 取消订阅 /（自建）删除提醒；
+   * 未订阅 → 直接走订阅授权。
+   */
+  onNodeTap(e) {
+    const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
+    const node = (this._allNodes || []).find((n) => n.id === id);
+    if (node && node.passed) {
+      wx.showToast({ title: '该节点已结束，无法订阅', icon: 'none' });
+      return;
+    }
+    if (!templateId) {
+      wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
+      return;
+    }
+    if (this.data.subscribedMap[id] > 0) {
+      this.openActions(id, name, iscustom, templateId);
+      return;
+    }
+    this.doSubscribe(id, templateId);
+  },
+
+  /**
    * 点击节点上的状态按钮（统一交互，官方/自建同一套）：
    * 未订阅 → 直接走订阅授权；
    * 已订阅 → 操作菜单：再订一次 / 取消订阅 /（自建）删除提醒。
