@@ -78,7 +78,7 @@ java -Xmx400m -jar target/app.jar
 | `SPRING_DATASOURCE_PASSWORD` | 同上，清空默认值 |
 | 云托管集群 / 命名空间 / 环境 ID | 从档案与脚本中移除，改由环境变量传入 |
 | 线上原始 `app.jar` | 内嵌配置含真实密钥，默认不纳入版本库（见 `.gitignore`） |
-| `ENV_ID`（前端） | 换成占位符 `YOUR-CLOUDBASE-ENV-ID` |
+| `ENV_ID`（前端） | 已填入云托管环境 ID `prod-exam-d9g96663daa04cb57`（此前为占位符） |
 
 > 小程序 **AppID** 与 **订阅消息模板 ID** 属客户端可见信息，未脱敏。
 

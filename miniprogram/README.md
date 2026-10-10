@@ -14,7 +14,7 @@
 
 | 位置 | 变量 | 说明 |
 |---|---|---|
-| `utils/api.js` | `ENV_ID` | 云托管环境 ID，仓库里留了占位符 `YOUR-CLOUDBASE-ENV-ID`，改成你自己的 |
+| `utils/api.js` | `ENV_ID` | 云托管环境 ID，当前为 `prod-exam-d9g96663daa04cb57` |
 | `utils/api.js` | `SERVICE` | 云托管服务名，当前 `exam-backend` |
 | `utils/api.js` | `APP_KEY` | 矩阵标识，`main` = 返回全部考试；`kaoyan` / `jiaozhi` 按赛道过滤 |
 
