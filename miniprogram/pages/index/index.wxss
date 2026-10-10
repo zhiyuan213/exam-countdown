@@ -98,7 +98,7 @@
   padding: 8rpx 8rpx 16rpx;
 }
 
-/* 消息清单：已订阅节点的汇总列表 */
+/* 消息清单：已订阅节点的汇总列表（与下方节点卡片统一高度） */
 .sub-row {
   display: flex;
   align-items: center;
@@ -107,6 +107,8 @@
   border-radius: 20rpx;
   padding: 24rpx;
   margin-bottom: 16rpx;
+  min-height: 148rpx;
+  box-sizing: border-box;
   box-shadow: 0 2rpx 8rpx rgba(74, 144, 226, 0.06);
 }
 
@@ -183,6 +185,8 @@
   padding: 24rpx;
   margin-bottom: 16rpx;
   border-left: 6rpx solid #7fb2e8;
+  min-height: 148rpx;
+  box-sizing: border-box;
   box-shadow: 0 2rpx 8rpx rgba(74, 144, 226, 0.06);
 }
 
