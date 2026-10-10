@@ -21,16 +21,11 @@
     <view class="node-right">
       <view class="countdown">{{node.daysLabel}}</view>
       <view class="btn-row">
-        <button
+        <!-- 只作状态展示，点击交给整行 onNodeTap，避免按钮字太小不好点 -->
+        <view
           wx:if="{{!node.passed}}"
-          class="subscribe-btn {{subscribedMap[node.id] ? 'is-subscribed' : ''}}"
-          size="mini"
-          data-id="{{node.id}}"
-          data-name="{{node.name}}"
-          data-iscustom="{{node.isCustom}}"
-          data-templateid="{{node.templateId}}"
-          catchtap="onSubscribe"
-        >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
+          class="sub-pill {{subscribedMap[node.id] ? 'is-subscribed' : ''}}"
+        >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</view>
       </view>
     </view>
     <text class="chevron">›</text>

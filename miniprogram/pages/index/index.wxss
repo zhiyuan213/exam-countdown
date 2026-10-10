@@ -253,21 +253,18 @@
   margin-bottom: 12rpx;
 }
 
-.subscribe-btn {
-  font-size: 24rpx !important;
-  line-height: 2.2 !important;
-  padding: 0 22rpx !important;
-  background: #4a90e2 !important;
-  color: #fff !important;
-  border-radius: 30rpx !important;
-  margin: 0 !important;
+/* 订阅状态胶囊：纯展示，点击由整行接管（行可点区域更大） */
+.sub-pill {
+  font-size: 24rpx;
+  line-height: 1.8;
+  padding: 0 22rpx;
+  background: #4a90e2;
+  color: #fff;
+  border-radius: 30rpx;
+  white-space: nowrap;
 }
 
-.subscribe-btn::after {
-  border: none;
-}
-
-.subscribe-btn.is-subscribed {
-  background: #e8eef6 !important;
-  color: #7a8ba6 !important;
+.sub-pill.is-subscribed {
+  background: #e8eef6;
+  color: #7a8ba6;
 }

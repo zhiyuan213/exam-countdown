@@ -273,24 +273,6 @@ Page({
     this.doSubscribe(id, templateId);
   },
 
-  /**
-   * 点击节点上的状态按钮（统一交互，官方/自建同一套）：
-   * 未订阅 → 直接走订阅授权；
-   * 已订阅 → 操作菜单：再订一次 / 取消订阅 /（自建）删除提醒。
-   */
-  onSubscribe(e) {
-    const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
-    if (!templateId) {
-      wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
-      return;
-    }
-    if (this.data.subscribedMap[id] > 0) {
-      this.openActions(id, name, iscustom, templateId);
-      return;
-    }
-    this.doSubscribe(id, templateId);
-  },
-
   /** 已订阅节点的操作菜单 */
   openActions(id, name, iscustom, templateId) {
     const items = ['再订一次（+1 条推送额度）', '取消订阅'];
