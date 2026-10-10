@@ -120,7 +120,7 @@
 }
 
 .sub-name {
-  font-size: 28rpx;
+  font-size: 30rpx;
   font-weight: 500;
   color: #333;
   margin-left: 12rpx;
@@ -132,20 +132,20 @@
 .sub-deadline {
   flex-shrink: 0;
   margin-left: 12rpx;
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #a2aab8;
 }
 
 .sub-date {
-  font-size: 22rpx;
+  font-size: 24rpx;
   color: #9099a8;
   margin-top: 10rpx;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* 倒计时胶囊：消息清单用，紧急红色 */
 .days-pill {
-  font-size: 24rpx;
+  font-size: 28rpx;
   font-weight: 600;
   color: #4a90e2;
   background: #eaf3fd;
