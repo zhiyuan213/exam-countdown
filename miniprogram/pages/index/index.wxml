@@ -65,6 +65,7 @@
           <view class="sub-head">
             <text class="badge">{{item.nodeLabel}}</text>
             <text class="sub-name">{{item.name}}</text>
+            <text class="sub-deadline">截止 {{item.examDate}}</text>
           </view>
           <view class="sub-date">
             <view>提醒剩余 {{item.remainTimes}} 次</view>

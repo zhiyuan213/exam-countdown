@@ -129,6 +129,13 @@
   white-space: nowrap;
 }
 
+.sub-deadline {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  color: #a2aab8;
+}
+
 .sub-date {
   font-size: 22rpx;
   color: #9099a8;
