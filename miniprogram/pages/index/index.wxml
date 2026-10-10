@@ -42,11 +42,15 @@
   <!-- 自定义下拉刷新区（京东样式：随下拉距离动态变化） -->
   <view wx:if="{{pullH > 0}}" class="pull-zone {{dragging ? 'dragging' : ''}}" style="height:{{pullH}}px">
     <!-- 下拉刷新图标：随下拉距离左转，拉到底正好转满一圈；松手自动回正 -->
-    <image
-      class="pull-icon {{refreshing ? 'spinning' : ''}}"
-      src="/images/calendar-red.png"
-      style="{{refreshing ? '' : 'transform: rotate(' + pullRotate + 'deg)'}}"
-    />
+    <!-- 外层舞台固定 80rpx（大于图标对角线），旋转的四个角不会被下拉区裁掉，视觉上只有旋转、没有缩放 -->
+    <view class="pull-icon-wrap">
+      <image
+        class="pull-icon {{refreshing ? 'spinning' : ''}}"
+        src="/images/calendar-red.png"
+        mode="aspectFit"
+        style="{{refreshing ? '' : 'transform: rotate(' + pullRotate + 'deg)'}}"
+      />
+    </view>
     <text class="pull-text">{{pullText}}</text>
   </view>
 

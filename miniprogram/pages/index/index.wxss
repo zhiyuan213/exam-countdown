@@ -17,11 +17,19 @@
   transition: none;
 }
 
-/* 下拉刷新图标：随下拉距离左转（松手带过渡回正） */
+/* 下拉刷新图标：舞台固定大于图标对角线（56 × √2 ≈ 79rpx），旋转不裁角、不缩放 */
+.pull-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80rpx;
+  height: 80rpx;
+  margin-bottom: 2rpx;
+}
+
 .pull-icon {
   width: 56rpx;
   height: 56rpx;
-  margin-bottom: 10rpx;
   transition: transform 0.3s ease;
 }
 

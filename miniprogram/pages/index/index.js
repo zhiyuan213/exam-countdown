@@ -133,7 +133,7 @@ Page({
         dragging: false,
         pullReady: false,
         pullRotate: 0,
-        pullH: 60,
+        pullH: 66,
         pullText: '正在刷新…',
         refreshing: true,
       });
