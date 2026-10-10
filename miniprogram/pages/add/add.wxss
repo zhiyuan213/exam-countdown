@@ -1,4 +1,4 @@
-/* 添加自定义提醒 */
+/* 添加设置提醒 */
 .card {
   background: #fff;
   border-radius: 16rpx;

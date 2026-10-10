@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 /**
- * 创建自定义提醒请求。
+ * 创建设置提醒请求。
  * openid 优先取云托管请求头，兜底用本字段（本地调试）。
  */
 @Data

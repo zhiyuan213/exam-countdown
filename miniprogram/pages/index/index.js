@@ -75,7 +75,7 @@ Page({
     this.setData({ subList: list });
   },
 
-  /** 顶部显示自定义提醒占用情况，方便用户知道还能加几个 */
+  /** 顶部显示设置提醒占用情况，方便用户知道还能加几个 */
   loadQuota() {
     api.fetchQuota()
       .then((q) => {

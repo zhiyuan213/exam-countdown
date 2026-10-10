@@ -74,18 +74,18 @@
 
     <view class="group group--mine">
       <view class="group-head">
-        <text class="group-title">自定义提醒</text>
+        <text class="group-title">设置提醒</text>
         <text class="group-hint">{{quotaText || '免费 3 个'}}</text>
       </view>
 
-      <view wx:if="{{customNodes.length === 0}}" class="mine-empty">还没有自建提醒，点下方按钮加一个</view>
+      <view wx:if="{{customNodes.length === 0}}" class="mine-empty">还没有设置提醒，点下方按钮加一个</view>
 
       <block wx:for="{{customNodes}}" wx:for-item="node" wx:key="id">
         <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
       </block>
 
       <button class="add-entry" bindtap="onAdd">＋ 添加提醒</button>
-      <view class="mine-hint">提示：长按自定义提醒可删除</view>
+      <view class="mine-hint">提示：长按设置提醒可删除</view>
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">

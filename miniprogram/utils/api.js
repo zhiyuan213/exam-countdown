@@ -106,7 +106,7 @@ function mockCall(path, method, data) {
           templateId: (mockData[0] && mockData[0].templateId) || '',
           nodeType: 'CUSTOM',
           groupCode: 'custom',
-          groupName: '自定义提醒',
+          groupName: '设置提醒',
           sort: 0,
           isCustom: true,
         };
@@ -208,17 +208,17 @@ function cancelSubscribe(examId) {
   return call('/api/subscribe/cancel', 'POST', { examId });
 }
 
-/** 自定义提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
+/** 设置提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
 function fetchQuota() {
   return call('/api/quota', 'GET');
 }
 
-/** 新建自定义提醒，返回 { ok, item, quota } */
+/** 新建设置提醒，返回 { ok, item, quota } */
 function createCustom(payload) {
   return call('/api/exams/custom', 'POST', payload);
 }
 
-/** 删除自定义提醒，返回 { ok, quota }。id 用 /api/exams 返回的那个 id */
+/** 删除设置提醒，返回 { ok, quota }。id 用 /api/exams 返回的那个 id */
 function deleteCustom(id) {
   return call('/api/exams/custom/' + id, 'DELETE');
 }

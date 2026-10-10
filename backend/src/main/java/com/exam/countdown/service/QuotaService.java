@@ -25,7 +25,7 @@ public class QuotaService {
 
     private static final Logger log = LoggerFactory.getLogger(QuotaService.class);
 
-    /** 免费额度：每个用户可同时管理 3 个自定义提醒 */
+    /** 免费额度：每个用户可同时管理 3 个设置提醒 */
     public static final int DEFAULT_FREE_QUOTA = 3;
 
     private final UserQuotaMapper quotaMapper;
