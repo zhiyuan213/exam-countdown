@@ -12,6 +12,7 @@ import com.exam.countdown.support.OpenidSupport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,6 +61,7 @@ public class SubscribeController {
         }
 
         String tpl;
+        LocalDate today = LocalDate.now();
         if (UserExam.isCustomId(req.getExamId())) {
             // 自建节点：必须是自己创建的，才允许登记订阅额度
             Long localId = UserExam.toLocalId(req.getExamId());
@@ -70,12 +72,18 @@ public class SubscribeController {
             if (!openid.equals(ue.getOpenid())) {
                 return Map.of("ok", false, "msg", "无权订阅他人的提醒");
             }
+            if (ue.getExamDate() != null && ue.getExamDate().isBefore(today)) {
+                return Map.of("ok", false, "msg", "该提醒已结束");
+            }
             tpl = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
                     ? ue.getTemplateId() : templateId;
         } else {
             Exam exam = examMapper.selectById(req.getExamId());
             if (exam == null) {
                 return Map.of("ok", false, "msg", "考试不存在");
+            }
+            if (exam.getExamDate() != null && exam.getExamDate().isBefore(today)) {
+                return Map.of("ok", false, "msg", "该考试已结束");
             }
             tpl = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
                     ? exam.getTemplateId() : templateId;
