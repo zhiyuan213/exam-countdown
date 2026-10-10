@@ -13,10 +13,33 @@ const NODE_LABEL = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** 各节点类型的提醒点（考前第 N 天），与后端 remind.nodes-by-type 默认值保持一致 */
+const REMIND_NODES = {
+  SIGNUP: [3, 1, 0],
+  TICKET: [7, 1, 0],
+  EXAM: [1, 0],
+  SCORE: [1, 0],
+  RETEST: [1, 0],
+  VOLUNTEER: [1, 0],
+  ADMISSION: [1, 0],
+  CUSTOM: [1, 0],
+};
+
+/** 推送时间点：后端 RemindJob 每天定时执行（默认 08:00） */
+const PUSH_TIME = '08:00';
+
 /** 把 "YYYY-MM-DD" 解析成本地零点的时间戳，避免时区偏移 */
 function parseDate(s) {
   const p = String(s).split('-').map(Number);
   return new Date(p[0], p[1] - 1, p[2]).getTime();
+}
+
+/** 时间戳 -> "YYYY-MM-DD" */
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
 /** 从今天零点起算的剩余天数；今天 = 0，已过 = 负数 */
@@ -70,7 +93,16 @@ Page({
     const nodes = this._allNodes || [];
     const list = nodes
       .filter((n) => !n.passed && map[n.id] > 0)
-      .map((n) => Object.assign({}, n, { remainTimes: map[n.id] }))
+      .map((n) => {
+        const days = daysLeft(n.examDate);
+        // 最近的、还没错过的提醒点（提醒点按考前第 N 天倒序找）
+        const remindNodes = (REMIND_NODES[n.nodeType] || [1, 0]).slice().sort((a, b) => b - a);
+        const next = remindNodes.find((d) => d <= days);
+        const nextPush = next === undefined
+          ? `${n.examDate} ${PUSH_TIME}`
+          : `${fmtDate(parseDate(n.examDate) - next * DAY_MS)} ${PUSH_TIME}`;
+        return Object.assign({}, n, { remainTimes: map[n.id], nextPush });
+      })
       .sort((a, b) => parseDate(a.examDate) - parseDate(b.examDate));
     this.setData({ subList: list });
   },
