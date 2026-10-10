@@ -33,8 +33,8 @@ wx:
 
 remind:
   cron: "0 0 8 * * ?"          # 每天 08:00 推送；调试时可临时改成 "*/30 * * * * ?"
-  nodes: "30,7,1,0"            # 官方节点提醒：考前 30/7/1 天及当天
-  custom-nodes: "1,0"          # 用户自建提醒：考前 1 天及当天（一次性订阅要逐次授权，点太多体验差）
+  nodes: ${REMIND_NODES:30,7,1,0}                 # 官方节点提醒点：考前 30/7/1 天及当天（可用环境变量覆盖）
+  custom-nodes: ${REMIND_CUSTOM_NODES:1,0}        # 用户自建提醒：考前 1 天及当天（一次性订阅要逐次授权，点太多体验差）
   job-token: ${REMIND_JOB_TOKEN:change-me}  # 云托管定时任务调用 /api/job/remind 的口令
 
 # 用户自建提醒额度：free_quota 默认 3（建行时写入 user_quota 表，改这里不影响已存在的行）。
