@@ -43,7 +43,7 @@
 /* 下拉提示文字：只换文案，字号/颜色/大小均保持不变 */
 .pull-text {
   font-size: 24rpx;
-  color: #7d93b5;
+  color: #999;
   padding-bottom: 14rpx;
 }
 
