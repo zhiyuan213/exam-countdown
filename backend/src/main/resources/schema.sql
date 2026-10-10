@@ -64,6 +64,23 @@ VALUES
   (16, '考研国家线公布', '2027-03-15', 0, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'SCORE',  60),
   (17, '考研复试',       '2027-03-28', 0, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'RETEST', 70);
 
+-- ============================================================
+-- 种子数据：高考的全部节点（2027 年高考）
+-- ⚠️ 日期核对说明：
+--    高考 6月7日 = 教育部历年固定安排；
+--    准考证打印/报名/成绩公布 = 各省口径略有差异，仍需上线前再核对一遍；
+--    志愿填报/本科批录取 = 预估值（status=0 未上架），日期确认后再 UPDATE status=1
+--    （老库补数据请执行 db/migration-gaokao.sql）
+-- ============================================================
+INSERT IGNORE INTO exam (id, name, exam_date, status, app_key, appid, template_id, group_code, group_name, node_type, sort)
+VALUES
+  (201, '高考报名',       '2026-11-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'SIGNUP',    10),
+  (202, '高考准考证打印', '2027-06-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'TICKET',    20),
+  (203, '高考',           '2027-06-07', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'EXAM',      30),
+  (204, '高考成绩公布',   '2027-06-25', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'SCORE',     40),
+  (205, '高考志愿填报',   '2027-06-28', 0, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'VOLUNTEER', 50),
+  (206, '本科批录取',     '2027-07-15', 0, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'ADMISSION', 60);
+
 -- ============ 老库升级（已在线上跑过的库）============
 -- 不要手动 ALTER 了，直接执行 exam-countdown/migration-v3.sql（含考研+教资全部节点数据）
 -- 新库（schema.sql 全新执行）不需要跑迁移脚本。

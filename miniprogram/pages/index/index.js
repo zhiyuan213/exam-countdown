@@ -6,6 +6,8 @@ const NODE_LABEL = {
   EXAM: '考试',
   SCORE: '成绩',
   RETEST: '复试',
+  VOLUNTEER: '志愿',
+  ADMISSION: '录取',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

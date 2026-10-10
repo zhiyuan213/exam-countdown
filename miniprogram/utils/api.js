@@ -18,6 +18,29 @@ const SERVICE = 'exam-backend';
 // 不传或传 main 会返回全部考试，按需改
 const APP_KEY = 'main';
 
+// ★ 本地开发验证开关：true = 不请求后端，直接用 utils/mock-data.js 的数据
+//   （数据来自 db/restore.sql 的线上真实 exam 表，app_key=main 且 status=1）
+//   验证完改回 false 即恢复云托管调用，不影响任何线上逻辑。
+const USE_MOCK = true;
+const mockData = require('./mock-data');
+
+/** mock 模式下模拟后端接口返回 */
+function mockCall(path, method) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (path === '/api/exams' && method === 'GET') {
+        resolve(mockData);
+      } else if (path === '/api/subscribe' && method === 'POST') {
+        resolve({ ok: true, remainTimes: 1 });
+      } else if (path === '/api/auth/login') {
+        resolve({ ok: true, mock: true });
+      } else {
+        resolve({});
+      }
+    }, 200); // 模拟网络延迟，能看到 loading 态
+  });
+}
+
 let inited = false;
 
 function ensureInit() {
@@ -27,6 +50,7 @@ function ensureInit() {
 }
 
 function call(path, method = 'GET', data = null) {
+  if (USE_MOCK) return mockCall(path, method);
   ensureInit();
   return new Promise((resolve, reject) => {
     wx.cloud.callContainer({
