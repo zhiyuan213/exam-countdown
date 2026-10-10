@@ -244,3 +244,89 @@ GET /api/quota
 - 跳转页同样带 `examId`，用命名空间 id 定位并高亮
 - 额度扣减、`43101` 处理与官方节点一致
 
+
+---
+
+## 6. 额度包购买（虚拟支付）· 2026-10 新增
+
+买的是**同时可管理的提醒数上限**（`user_quota.paid_quota`），不是推送条数；删除或过期自动释放，所以不存在「用掉就没了」的争议。
+
+模式选用官方**道具直购** `short_series_goods`（低频单次购买），全终端（含 iOS）走微信虚拟支付通道。
+
+### 开通与配置（云托管环境变量）
+
+| 变量 | 说明 |
+|---|---|
+| `XPAY_ENABLED` | 总开关。未配置时 `/api/pay/*` 返回「支付功能尚未开通」，不影响其他功能 |
+| `XPAY_OFFER_ID` | mp 后台「虚拟支付 → 基础配置」里的 OfferID |
+| `XPAY_APP_KEY` | 现网 AppKey（密钥，只配环境变量，**不要提交仓库**） |
+| `XPAY_APP_KEY_SANDBOX` | 沙箱 AppKey（`XPAY_ENV=1` 时使用） |
+| `XPAY_ENV` | `0` 现网 / `1` 沙箱 |
+| `XPAY_PUSH_TOKEN` | mp 后台「消息推送」配置的 Token，用于校验发货推送来源 |
+| `XPAY_GOODS` | `goodsId:priceFen:quota:name`，多项用 `;` 分隔 |
+
+默认额度包：`quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度`（¥6 / ¥12）。
+
+⚠️ `goodsId` 必须与后台「道具管理」里的**道具 ID 完全一致**，`priceFen` 必须与后台价格**完全一致**，否则拉起支付会被拒。
+⚠️ iOS 端可能存在最低金额门槛，若 iOS 报错先把单价调到 ≥ 6 元（环境变量与后台价格要同步改）。
+⚠️ 道具需在后台「道具管理」逐个创建并发布（发布要审核），ID 创建后不可改。
+
+### 商品列表
+
+```
+GET /api/pay/goods
+→ { "ok": true, "enabled": true, "goods": [ { "goodsId": "quota10", "name": "+10 个提醒额度", "priceFen": 600, "quota": 10 } ] }
+```
+
+### 下单（返回拉起支付三件套）
+
+```
+POST /api/pay/order
+body: { "goodsId": "quota10", "code": "<wx.login() 的 code>" }
+→ { "ok": true, "orderId": "T20261010203000123456", "mode": "short_series_goods", "env": 0,
+    "signData": "{...}", "paySig": "<64位hex>", "signature": "<64位hex>", "goods": {...} }
+```
+
+- `code` 是**必需**的：用户态签名 `signature = HMAC_SHA256(session_key, signData)`，后端要用 `code` 走 `jscode2session` 换 `session_key`
+- `paySig = HMAC_SHA256(AppKey, "requestVirtualPayment&" + signData)`，`AppKey` 只存在于服务端
+- `signData` 字段顺序固定为 `offerId / buyQuantity / env / currencyType / productId / goodsPrice / outTradeNo / attach`，**顺序即签名内容**，任何一处改动都会导致验签失败
+- 下单即落库 `pay_order`（status=`INIT`），失败返回 `{ ok:false, code, msg }`，`code` 取值：`PAY_DISABLED` / `PAY_NOT_CONFIGURED` / `GOODS_NOT_FOUND` / `CODE_REQUIRED` / `SESSION_FAILED` / `SIGN_FAILED`
+
+前端随后调用：
+
+```js
+wx.requestVirtualPayment({ signData, paySig, signature, mode: 'short_series_goods', ... })
+```
+
+### 查订单状态（支付后确认）
+
+```
+GET /api/pay/order/{orderId}
+→ { "ok": true, "orderId": "...", "status": "DELIVERED", "quotaDelta": 10, "delivered": true }
+```
+
+`status`：`INIT` 未支付 / `PAID` 已支付待发货 / `DELIVERED` 已发货（额度已到账）。
+
+**前端 `wx.requestVirtualPayment` 的 success 只算弱确认**，必须以本接口（后端状态）为准。发货由微信推送驱动、后端异步到账，所以前端轮询几次即可，没到账就提示「稍后到账」，不会丢单。
+
+### 发货推送（微信 → 本服务）
+
+推送地址配置在 mp 后台「虚拟支付 → 基本配置 → 基础配置 → 发货推送配置」：
+`https://<云托管公网域名>/api/pay/notify`
+
+- `GET /api/pay/notify`：配置 URL 时微信的校验请求，原样回 `echostr`
+- `POST /api/pay/notify`：事件 `xpay_goods_deliver_notify`，JSON / XML 两种格式都支持
+  - 应答格式跟随请求格式：JSON → `{"ErrCode":0,"ErrMsg":"success"}`；XML → `<xml><Errcode>0</Errcode>...</xml>`
+  - 应答不合法或返回失败，微信最多重推 15 次
+- 幂等两道闸：① `pay_order.status` 已是 `DELIVERED` 直接返回成功；② 同一 `WeChatPayInfo.MchOrderNo` 已发过货也返回成功
+- 发货动作：`QuotaService.addPaidQuota(openid, quotaDelta)`，累加 `user_quota.paid_quota`
+- 找不到订单时返回失败（让微信重试），并打 `ERROR` 日志
+
+### 兜底查单
+
+```
+POST /api/pay/recheck?token=<REMIND_JOB_TOKEN>
+→ { "ok": true, "checked": 3, "delivered": 1 }
+```
+
+扫描近 6 小时仍为 `INIT` 的当前环境订单，调 `/xpay/query_order` 确认已支付则补发货。建议挂在云托管定时任务上（每 5~10 分钟一次），和提醒任务共用 `REMIND_JOB_TOKEN`。

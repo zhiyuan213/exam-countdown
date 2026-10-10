@@ -84,6 +84,36 @@ CREATE TABLE IF NOT EXISTS user_quota (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户提醒额度表';
 
 -- ============================================================
+-- 虚拟支付订单表（二期）。道具直购 short_series_goods 模式的订单流水。
+-- 主键 outTradeNo 就是下单时下发给微信的业务订单号，发货推送靠它回捞订单。
+-- 状态：INIT 已下单未支付 / PAID 已支付待发货 / DELIVERED 已发货（额度已到账）/ CLOSED 关闭
+-- 幂等：状态为 DELIVERED 直接跳过；另用 wx_order_id（微信平台单号）做第二道去重。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pay_order (
+  out_trade_no   VARCHAR(64)  NOT NULL COMMENT '业务订单号 T+时间戳+随机',
+  openid         VARCHAR(64)  NOT NULL COMMENT '付款用户 openid',
+  product_id     VARCHAR(64)  NOT NULL COMMENT '道具ID（与 mp 后台道具管理一致）',
+  goods_name     VARCHAR(128) DEFAULT NULL COMMENT '额度包展示名',
+  quota_delta    INT          NOT NULL DEFAULT 0 COMMENT '本单应发放额度数',
+  quantity       INT          NOT NULL DEFAULT 1 COMMENT '购买数量',
+  price_fen      INT          NOT NULL DEFAULT 0 COMMENT '道具单价（分）',
+  actual_fen     INT          DEFAULT NULL COMMENT '实付金额（分，来自回调）',
+  env            INT          NOT NULL DEFAULT 0 COMMENT '0 现网 1 沙箱',
+  status         VARCHAR(16)  NOT NULL DEFAULT 'INIT' COMMENT 'INIT/PAID/DELIVERED/CLOSED',
+  wx_order_id    VARCHAR(64)  DEFAULT NULL COMMENT '微信平台单号 WeChatPayInfo.MchOrderNo',
+  transaction_id VARCHAR(64)  DEFAULT NULL COMMENT '微信支付交易号',
+  attach         VARCHAR(255) DEFAULT NULL COMMENT '透传 openid|goodsId|quota',
+  notify_count   INT          NOT NULL DEFAULT 0 COMMENT '收到发货推送次数',
+  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  paid_at        DATETIME     DEFAULT NULL,
+  delivered_at   DATETIME     DEFAULT NULL,
+  PRIMARY KEY (out_trade_no),
+  KEY idx_openid_created (openid, created_at),
+  KEY idx_status_created (status, created_at),
+  KEY idx_wx_order (wx_order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='虚拟支付订单表';
+
+-- ============================================================
 -- 种子数据：考研的全部节点（新装库执行）
 -- ⚠️ 日期核对说明：
 --    报名/报名截止/准考证/初试 = 官方已公布口径，仍需上线前再核对一遍；

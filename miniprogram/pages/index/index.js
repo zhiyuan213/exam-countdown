@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const buy = require('../../utils/buy');
 
 const NODE_LABEL = {
   SIGNUP: '报名',
@@ -58,6 +59,9 @@ Page({
     highlightId: 0,
     errorMsg: '',
     quotaText: '',
+    quotaRemaining: 0,
+    quotaLimit: 0,
+    quotaUsed: 0,
     subscribedMap: {},
     // 自定义下拉刷新
     pullH: 0,
@@ -184,14 +188,55 @@ Page({
     return api.fetchQuota()
       .then((q) => {
         if (q && q.ok !== false && typeof q.remaining === 'number') {
-          this.setData({ quotaText: `已用 ${q.used}/${q.limit}，还可加 ${q.remaining} 个` });
+          this.setData({
+            quotaText: `已用 ${q.used}/${q.limit}，还可加 ${q.remaining} 个`,
+            quotaRemaining: q.remaining,
+            quotaLimit: q.limit,
+            quotaUsed: q.used,
+          });
         }
       })
       .catch((err) => console.error('fetchQuota failed:', err));
   },
 
+  /** 加提醒：额度用完时引导购买额度包，否则直接进添加页 */
   onAdd() {
+    if (this.data.quotaRemaining <= 0) {
+      this.promptBuy();
+      return;
+    }
     wx.navigateTo({ url: '/pages/add/add' });
+  },
+
+  /** 额度用完 / 主动购买：确认后走购买流程 */
+  onBuyQuota() {
+    this.promptBuy();
+  },
+
+  promptBuy() {
+    const full = this.data.quotaRemaining <= 0;
+    wx.showModal({
+      title: full ? '提醒额度已用完' : '提醒额度包',
+      content: full
+        ? `当前已用 ${this.data.quotaUsed}/${this.data.quotaLimit}，购买额度包可同时管理更多提醒（删除或过期的提醒会自动释放额度）`
+        : `当前已用 ${this.data.quotaUsed}/${this.data.quotaLimit}，可购买额度包提升上限`,
+      confirmText: '去购买',
+      cancelText: '暂不',
+      success: (r) => {
+        if (r.confirm) {
+          this.buyQuota();
+        }
+      },
+    });
+  },
+
+  buyQuota() {
+    buy.buyQuota().then((r) => {
+      if (r && r.ok) {
+        this.loadQuota();
+        this.load();
+      }
+    });
   },
 
   /** 长按节点卡片：自建提醒可触发删除，官方节点无额外操作 */

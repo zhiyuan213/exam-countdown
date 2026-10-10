@@ -30,6 +30,27 @@ wx:
   secret: ${WX_SECRET:}
   template-id: ${WX_TEMPLATE_ID:}
   cloud-call: ${WX_CLOUD_CALL:true}   # true=云托管云调用通道(http 自动注入 token)；本地开发设 false 走 https+secret
+  # ------------------------------------------------------------
+  # 虚拟支付（二期）：购买「提醒额度包」。开通后把下面几项配到云托管环境变量。
+  # 未配置时 enabled=false，/api/pay/* 会明确返回「支付功能尚未开通」，不影响其他功能。
+  #   XPAY_ENABLED           总开关，开通虚拟支付并自测通过后再置 true
+  #   XPAY_OFFER_ID          mp 后台「虚拟支付 → 基础配置」里的 OfferID
+  #   XPAY_APP_KEY           现网 AppKey（密钥！只配到环境变量，不要提交到仓库）
+  #   XPAY_APP_KEY_SANDBOX   沙箱 AppKey（env=1 时使用）
+  #   XPAY_ENV               0 现网 / 1 沙箱
+  #   XPAY_PUSH_TOKEN        mp 后台「消息推送」配置的 Token，用于校验发货推送来源
+  #   XPAY_GOODS             额度包配置 goodsId:priceFen:quota:name，多项用 ; 分隔
+  # ⚠️ goodsId 必须与后台「道具管理」里的道具 ID 完全一致，priceFen 必须与后台价格完全一致，
+  #    否则拉起支付会被微信侧拒绝。iOS 端可能存在最低金额门槛，如遇报错把单价调到 ≥ 6 元再试。
+  # ------------------------------------------------------------
+  pay:
+    enabled: ${XPAY_ENABLED:false}
+    offer-id: ${XPAY_OFFER_ID:}
+    appkey: ${XPAY_APP_KEY:}
+    appkey-sandbox: ${XPAY_APP_KEY_SANDBOX:}
+    env: ${XPAY_ENV:0}
+    push-token: ${XPAY_PUSH_TOKEN:}
+    goods: ${XPAY_GOODS:quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度}
 
 remind:
   cron: "0 0 8 * * ?"          # 每天 08:00 推送；调试时可临时改成 "*/30 * * * * ?"

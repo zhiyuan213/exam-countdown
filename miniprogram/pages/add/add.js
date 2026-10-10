@@ -1,4 +1,5 @@
 const api = require('../../utils/api');
+const buy = require('../../utils/buy');
 
 const pad = (n) => (n < 10 ? '0' + n : '' + n);
 const fmt = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -128,6 +129,10 @@ Page({
     api.createCustom({ name, examDate: this.data.date })
       .then((res) => {
         if (!res || !res.ok) {
+          if (res && res.code === 'QUOTA_EXCEEDED') {
+            this.promptBuy();
+            return null;
+          }
           wx.showModal({
             title: '添加失败',
             content: (res && res.msg) || '请稍后重试',
@@ -149,6 +154,25 @@ Page({
         wx.showToast({ title: '网络异常，请重试', icon: 'none' });
       })
       .then(() => this.setData({ submitting: false }));
+  },
+
+  /** 额度不足：引导购买额度包（购买流程与首页共用 utils/buy.js） */
+  promptBuy() {
+    const q = this.data.quota || {};
+    wx.showModal({
+      title: '提醒额度已用完',
+      content: `当前已用 ${q.used}/${q.limit}，购买额度包可同时管理更多提醒`,
+      confirmText: '去购买',
+      cancelText: '取消',
+      success: (r) => {
+        if (!r.confirm) return;
+        buy.buyQuota().then((res) => {
+          if (res && res.ok) {
+            this.loadQuota();
+          }
+        });
+      },
+    });
   },
 
   done(msg) {

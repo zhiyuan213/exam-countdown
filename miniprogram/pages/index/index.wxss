@@ -129,6 +129,7 @@
   font-size: 22rpx;
   color: #8a94a6;
   padding-right: 8rpx;
+  margin-left: auto;   /* 与「额度包 ›」一起靠右 */
 }
 
 .mine-empty {
@@ -221,6 +222,21 @@
 
 .add-entry::after {
   border: none;
+}
+
+/* 额度已满时按钮变成购买入口 */
+.add-entry--full {
+  color: #e98b1f !important;
+  border-color: #f0c893 !important;
+  background: #fffaf2 !important;
+}
+
+/* 设置提醒分组标题右侧的「额度包」入口 */
+.quota-buy {
+  font-size: 22rpx;
+  color: #4a90e2;
+  margin-left: 16rpx;
+  flex-shrink: 0;
 }
 
 .node {

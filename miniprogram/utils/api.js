@@ -43,10 +43,24 @@ try {
   if (savedSub && typeof savedSub === 'object') mockSubscribed = savedSub;
 } catch (e) { /* ignore */ }
 
+// ---- mock 虚拟支付（二期）：已购额度 + 订单，持久化，方便验证购买后额度变化 ----
+const MOCK_GOODS = [
+  { goodsId: 'quota10', name: '+10 个提醒额度', priceFen: 600, quota: 10 },
+  { goodsId: 'quota30', name: '+30 个提醒额度', priceFen: 1200, quota: 30 },
+];
+const MOCK_PAID_KEY = 'mock_paid_quota';
+let mockPaidQuota = 0;
+try {
+  const savedPaid = Number(wx.getStorageSync(MOCK_PAID_KEY));
+  if (savedPaid > 0) mockPaidQuota = savedPaid;
+} catch (e) { /* ignore */ }
+let mockOrders = {};
+
 function mockPersist() {
   try {
     wx.setStorageSync(MOCK_STORE_KEY, mockCustom);
     wx.setStorageSync(MOCK_SUB_KEY, mockSubscribed);
+    wx.setStorageSync(MOCK_PAID_KEY, mockPaidQuota);
   } catch (e) { /* ignore */ }
 }
 
@@ -54,6 +68,8 @@ function mockReset() {
   mockCustom = [];
   mockCustomSeq = 1;
   mockSubscribed = {};
+  mockPaidQuota = 0;
+  mockOrders = {};
   mockPersist();
 }
 
@@ -65,13 +81,14 @@ function todayStr() {
 
 function mockQuota() {
   const used = mockCustom.filter((x) => x.examDate >= todayStr()).length;
+  const limit = MOCK_FREE_QUOTA + mockPaidQuota;
   return {
     ok: true,
     freeQuota: MOCK_FREE_QUOTA,
-    paidQuota: 0,
-    limit: MOCK_FREE_QUOTA,
+    paidQuota: mockPaidQuota,
+    limit,
     used,
-    remaining: Math.max(MOCK_FREE_QUOTA - used, 0),
+    remaining: Math.max(limit - used, 0),
   };
 }
 
@@ -142,6 +159,36 @@ function mockCall(path, method, data) {
         resolve({ ok: true, items });
       } else if (path === '/api/auth/login') {
         resolve({ ok: true, mock: true, openid: 'mock-openid' });
+      } else if (path === '/api/pay/goods' && method === 'GET') {
+        resolve({ ok: true, enabled: true, goods: MOCK_GOODS });
+      } else if (path === '/api/pay/order' && method === 'POST') {
+        const g = MOCK_GOODS.find((x) => x.goodsId === (data || {}).goodsId);
+        if (!g) {
+          resolve({ ok: false, code: 'GOODS_NOT_FOUND', msg: '额度包不存在' });
+          return;
+        }
+        const orderId = 'MOCK' + Date.now();
+        mockOrders[orderId] = { quota: g.quota, paid: false };
+        console.log('[mock] pay order created:', orderId, g);
+        resolve({
+          ok: true, mock: true, orderId, mode: 'short_series_goods', env: 0,
+          signData: '{}', paySig: 'mock-pay-sig', signature: 'mock-signature', goods: g,
+        });
+      } else if (path.indexOf('/api/pay/order/') === 0 && method === 'GET') {
+        const orderId = path.split('/').pop();
+        const o = mockOrders[orderId];
+        if (!o) {
+          resolve({ ok: false, code: 'ORDER_NOT_FOUND', msg: '订单不存在' });
+          return;
+        }
+        // mock 里第一次查询即视为支付完成并发货
+        if (!o.paid) {
+          o.paid = true;
+          mockPaidQuota += o.quota;
+          mockPersist();
+        }
+        console.log('[mock] pay order delivered:', orderId, '+', o.quota, 'paidQuota:', mockPaidQuota);
+        resolve({ ok: true, orderId, status: 'DELIVERED', quotaDelta: o.quota, delivered: true });
       } else {
         resolve({});
       }
@@ -223,9 +270,25 @@ function deleteCustom(id) {
   return call('/api/exams/custom/' + id, 'DELETE');
 }
 
+/** 额度包列表（虚拟支付），返回 { ok, enabled, goods: [{goodsId, name, priceFen, quota}] } */
+function fetchGoods() {
+  return call('/api/pay/goods', 'GET');
+}
+
+/** 创建支付订单，body: { goodsId, code }（code 来自 wx.login），返回 signData/paySig/signature */
+function createPayOrder(payload) {
+  return call('/api/pay/order', 'POST', payload);
+}
+
+/** 查询订单状态（支付后确认到账用），返回 { ok, status, delivered } */
+function queryPayOrder(orderId) {
+  return call('/api/pay/order/' + orderId, 'GET');
+}
+
 module.exports = {
   call, login, fetchExams, subscribe, fetchSubscriptions, cancelSubscribe,
   fetchQuota, createCustom, deleteCustom, mockReset,
+  fetchGoods, createPayOrder, queryPayOrder,
   IS_MOCK: USE_MOCK,
   ENV_ID, SERVICE, APP_KEY,
 };

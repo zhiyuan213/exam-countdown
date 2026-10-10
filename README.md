@@ -109,3 +109,36 @@ export WB_NAMESPACE=<命名空间>
 
 `db/raw/*.sql` 与 `db/restore.sql` 中的记录为**开发期自测数据**（2 个用户、3 条订阅、104 条推送日志、12 条考试节点）。
 其中 `wx_user` / `subscription` / `push_log` 含真实 `openid`，若仓库公开且你介意，可将其替换为占位串。
+
+## 额度包购买（虚拟支付 · 二期）
+
+用户可以购买「提醒额度包」提升**可同时管理的提醒数上限**（`user_quota.paid_quota`）。
+走微信官方虚拟支付的道具直购模式（`short_series_goods`），全终端覆盖，含 iOS。
+
+### 开通后的配置清单
+
+云托管控制台 → 服务 → 环境变量：
+
+```
+XPAY_ENABLED=true
+XPAY_OFFER_ID=<mp 后台「虚拟支付 → 基础配置」的 OfferID>
+XPAY_APP_KEY=<现网 AppKey>            # 密钥，不要提交仓库
+XPAY_APP_KEY_SANDBOX=<沙箱 AppKey>     # 调试用
+XPAY_ENV=0                            # 0 现网 / 1 沙箱
+XPAY_PUSH_TOKEN=<mp 后台「消息推送」的 Token>
+XPAY_GOODS=quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度
+```
+
+mp 后台还要做三件事：
+
+1. 「虚拟支付 → 道具管理」按 `XPAY_GOODS` 里的 goodsId / 价格逐个创建道具并发布（价格单位是元，代码里是分）
+2. 「虚拟支付 → 基本配置 → 发货推送配置」填 `https://<云托管公网域名>/api/pay/notify`
+3. 云托管加一个定时任务，每 5~10 分钟 `POST /api/pay/recheck?token=<REMIND_JOB_TOKEN>`（兜底补发货）
+
+表 `pay_order` 由 `schema.sql` 启动时自动创建，不用手动建表。
+
+### 本地联调
+
+- `XPAY_ENV=1` + 沙箱 AppKey 可跑沙箱（iOS 不支持沙箱支付，只能用安卓真机调）
+- 前端 `USE_MOCK=true` 时购买流程完全走本地 mock：不拉起真实支付，点购买即视为支付成功并把额度加上去，用来验证 UI 与额度联动
+- 接口契约见 `docs/API.md` 第 6 节

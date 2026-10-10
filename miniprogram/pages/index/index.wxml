@@ -90,13 +90,14 @@
       <view class="group-head">
         <text class="group-title">设置提醒</text>
         <text class="group-hint">{{quotaText || '免费 3 个'}}</text>
+        <text class="quota-buy" bindtap="onBuyQuota">额度包 ›</text>
       </view>
 
       <block wx:for="{{customNodes}}" wx:for-item="node" wx:key="id">
         <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
       </block>
 
-      <button class="add-entry" bindtap="onAdd">＋ 添加提醒</button>
+      <button class="add-entry {{quotaRemaining <= 0 ? 'add-entry--full' : ''}}" bindtap="onAdd">{{quotaRemaining <= 0 ? '额度已满 · 购买额度包' : '＋ 添加提醒'}}</button>
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
