@@ -60,11 +60,6 @@
         wx:for="{{subList}}"
         wx:key="id"
         class="sub-row {{item.urgent ? 'sub-row--urgent' : ''}} {{item.passed ? 'sub-row--passed' : ''}}"
-        data-id="{{item.id}}"
-        data-name="{{item.name}}"
-        data-iscustom="{{item.isCustom}}"
-        data-templateid="{{item.templateId}}"
-        bindtap="onSubRowTap"
       >
         <view class="sub-main">
           <view class="sub-head">
@@ -74,7 +69,6 @@
           <view class="sub-date">📅 {{item.examDate}} · 剩余 {{item.remainTimes}} 次推送</view>
         </view>
         <text class="days-pill {{item.urgent ? 'days-pill--urgent' : ''}}">{{item.daysLabel}}</text>
-        <text class="chevron">›</text>
       </view>
     </view>
 

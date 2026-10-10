@@ -229,18 +229,6 @@ Page({
     this.doSubscribe(id, templateId);
   },
 
-  /** 点击「消息清单」里的条目：与卡片按钮走同一套操作菜单 */
-  onSubRowTap(e) {
-    const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
-    if (this.data.subscribedMap[id] > 0) {
-      this.openActions(id, name, iscustom, templateId || '');
-      return;
-    }
-    if (templateId) {
-      this.doSubscribe(id, templateId);
-    }
-  },
-
   /** 已订阅节点的操作菜单 */
   openActions(id, name, iscustom, templateId) {
     const items = ['再订一次（+1 条推送额度）', '取消订阅'];
