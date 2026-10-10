@@ -12,7 +12,11 @@ import com.exam.countdown.support.OpenidSupport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 /**
  * 订阅提醒。一次调用 = 一次推送额度（remain_times +1）。
@@ -95,5 +99,36 @@ public class SubscribeController {
             subscriptionMapper.updateById(sub);
         }
         return Map.of("ok", true, "remainTimes", sub.getRemainTimes());
+    }
+
+    /**
+     * 当前用户已订阅（remain_times > 0）的节点列表，
+     * 前端用来把「订阅提醒」按钮渲染成「已订阅」状态。
+     * 返回 items: [{examId, remainTimes}]
+     */
+    @GetMapping("/list")
+    public Map<String, Object> list(
+            @RequestHeader(value = "X-WX-FROM-OPENID", required = false) String fromOpenid,
+            @RequestHeader(value = "X-WX-OPENID", required = false) String cloudOpenid) {
+
+        String openid = OpenidSupport.resolve(fromOpenid, cloudOpenid, null);
+        if (openid == null) {
+            return Map.of("ok", false, "msg", "openid 缺失，请重新进入小程序");
+        }
+
+        List<Subscription> subs = subscriptionMapper.selectList(
+                new QueryWrapper<Subscription>()
+                        .eq("openid", openid)
+                        .gt("remain_times", 0)
+                        .select("exam_id", "remain_times"));
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Subscription s : subs) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("examId", s.getExamId());
+            item.put("remainTimes", s.getRemainTimes());
+            items.add(item);
+        }
+        return Map.of("ok", true, "items", items);
     }
 }

@@ -35,13 +35,25 @@ try {
 } catch (e) { /* 存储不可用就退化为纯内存 */ }
 let mockCustomSeq = mockCustom.reduce((m, x) => Math.max(m, x.id - MOCK_ID_BASE), 0) + 1;
 
+// mock 订阅状态：examId -> remainTimes，持久化到本地存储
+const MOCK_SUB_KEY = 'mock_subscribed_map';
+let mockSubscribed = {};
+try {
+  const savedSub = wx.getStorageSync(MOCK_SUB_KEY);
+  if (savedSub && typeof savedSub === 'object') mockSubscribed = savedSub;
+} catch (e) { /* ignore */ }
+
 function mockPersist() {
-  try { wx.setStorageSync(MOCK_STORE_KEY, mockCustom); } catch (e) { /* ignore */ }
+  try {
+    wx.setStorageSync(MOCK_STORE_KEY, mockCustom);
+    wx.setStorageSync(MOCK_SUB_KEY, mockSubscribed);
+  } catch (e) { /* ignore */ }
 }
 
 function mockReset() {
   mockCustom = [];
   mockCustomSeq = 1;
+  mockSubscribed = {};
   mockPersist();
 }
 
@@ -109,7 +121,18 @@ function mockCall(path, method, data) {
         console.log('[mock] custom deleted:', id, 'quota:', mockQuota());
         resolve({ ok: true, quota: mockQuota() });
       } else if (path === '/api/subscribe' && method === 'POST') {
-        resolve({ ok: true, remainTimes: 1 });
+        const examId = Number((data || {}).examId);
+        if (examId) {
+          mockSubscribed[examId] = (mockSubscribed[examId] || 0) + 1;
+          mockPersist();
+        }
+        console.log('[mock] subscribed:', examId, 'remainTimes:', mockSubscribed[examId]);
+        resolve({ ok: true, remainTimes: mockSubscribed[examId] || 1 });
+      } else if (path === '/api/subscribe/list' && method === 'GET') {
+        const items = Object.keys(mockSubscribed)
+          .filter((k) => mockSubscribed[k] > 0)
+          .map((k) => ({ examId: Number(k), remainTimes: mockSubscribed[k] }));
+        resolve({ ok: true, items });
       } else if (path === '/api/auth/login') {
         resolve({ ok: true, mock: true, openid: 'mock-openid' });
       } else {
@@ -168,6 +191,11 @@ function subscribe(examId) {
   return call('/api/subscribe', 'POST', { examId });
 }
 
+/** 当前用户已订阅的节点列表，返回 { ok, items: [{examId, remainTimes}] } */
+function fetchSubscriptions() {
+  return call('/api/subscribe/list', 'GET');
+}
+
 /** 我的提醒额度，返回 { ok, freeQuota, paidQuota, limit, used, remaining } */
 function fetchQuota() {
   return call('/api/quota', 'GET');
@@ -184,7 +212,7 @@ function deleteCustom(id) {
 }
 
 module.exports = {
-  call, login, fetchExams, subscribe,
+  call, login, fetchExams, subscribe, fetchSubscriptions,
   fetchQuota, createCustom, deleteCustom, mockReset,
   IS_MOCK: USE_MOCK,
   ENV_ID, SERVICE, APP_KEY,

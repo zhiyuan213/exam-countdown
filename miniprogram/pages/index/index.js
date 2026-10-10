@@ -33,6 +33,7 @@ Page({
     highlightId: 0,
     errorMsg: '',
     quotaText: '',
+    subscribedMap: {},
   },
 
   onLoad(options) {
@@ -43,6 +44,19 @@ Page({
   onShow() {
     this.load();
     this.loadQuota();
+    this.loadSubscriptions();
+  },
+
+  /** 已订阅的节点（examId -> remainTimes），用来把按钮渲染成「已订阅」 */
+  loadSubscriptions() {
+    api.fetchSubscriptions()
+      .then((r) => {
+        if (!r || !r.ok) return;
+        const map = {};
+        (r.items || []).forEach((it) => { map[it.examId] = it.remainTimes; });
+        this.setData({ subscribedMap: map });
+      })
+      .catch((err) => console.error('fetchSubscriptions failed:', err));
   },
 
   /** 顶部显示「我的提醒」占用情况，方便用户知道还能加几个 */
@@ -158,6 +172,25 @@ Page({
       return;
     }
 
+    // 已订阅过：再订一次 = 增加一条推送额度，让用户确认而不是默默叠加
+    const remain = this.data.subscribedMap[id];
+    if (remain > 0) {
+      wx.showModal({
+        title: '已订阅过',
+        content: `「${name}」已订阅（剩余 ${remain} 次提醒）。再订一次可多一条推送额度，继续吗？`,
+        confirmText: '再订一次',
+        success: (res) => {
+          if (res.confirm) {
+            this.doSubscribe(id, templateId);
+          }
+        },
+      });
+      return;
+    }
+    this.doSubscribe(id, templateId);
+  },
+
+  doSubscribe(id, templateId) {
     wx.requestSubscribeMessage({
       tmplIds: [templateId],
       success: (res) => {
@@ -168,6 +201,9 @@ Page({
         api.subscribe(id)
           .then((r) => {
             if (r && r.ok) {
+              const map = Object.assign({}, this.data.subscribedMap);
+              map[id] = r.remainTimes;
+              this.setData({ subscribedMap: map });
               wx.showToast({ title: `已订阅，剩余 ${r.remainTimes} 次`, icon: 'none' });
             } else {
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });

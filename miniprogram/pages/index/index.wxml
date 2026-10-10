@@ -31,13 +31,13 @@
           <view class="countdown">{{node.daysLabel}}</view>
           <view class="btn-row">
             <button
-              class="subscribe-btn"
+              class="subscribe-btn {{subscribedMap[node.id] ? 'is-subscribed' : ''}}"
               size="mini"
               data-id="{{node.id}}"
               data-name="{{node.name}}"
               data-templateid="{{node.templateId}}"
               bindtap="onSubscribe"
-            >订阅提醒</button>
+            >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
             <button
               wx:if="{{node.isCustom}}"
               class="delete-btn"

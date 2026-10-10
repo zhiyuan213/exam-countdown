@@ -153,3 +153,8 @@
 .subscribe-btn::after {
   border: none;
 }
+
+.subscribe-btn.is-subscribed {
+  background: #e8eef6 !important;
+  color: #7a8ba6 !important;
+}

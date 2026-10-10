@@ -81,6 +81,20 @@ Body: { "examId": 1, "openid": "<可选，header 取不到时的兜底>" }
 - 考试不存在 → `{ "ok": false, "msg": "考试不存在" }`
 - openid 缺失 → `{ "ok": false, "msg": "openid 缺失，请重新进入小程序" }`
 
+### 已订阅列表
+
+```
+GET /api/subscribe/list
+```
+
+返回当前用户 `remain_times > 0` 的订阅（前端据此把按钮渲染成「已订阅」）：
+
+```json
+{ "ok": true, "items": [ { "examId": 1, "remainTimes": 2 }, { "examId": 1000000001, "remainTimes": 1 } ] }
+```
+
+- `examId` 含自建节点（命名空间 id），与 `/api/exams` 返回的 id 同一体系。
+
 ## 4. 手动触发提醒任务
 
 ```
