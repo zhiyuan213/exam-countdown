@@ -59,6 +59,12 @@ Page({
     errorMsg: '',
     quotaText: '',
     subscribedMap: {},
+    // 自定义下拉刷新
+    pullH: 0,
+    pullText: '',
+    pullReady: false,
+    dragging: false,
+    refreshing: false,
   },
 
   onLoad(options) {
@@ -72,9 +78,69 @@ Page({
     this.loadSubscriptions();
   },
 
+  /** 记录页面滚动位置：只在滚到顶时才允许触发下拉刷新 */
+  onPageScroll(e) {
+    this._scrollTop = e.scrollTop || 0;
+  },
+
+  // ================= 自定义下拉刷新（京东样式） =================
+
+  onTouchStart(e) {
+    if (this.data.refreshing) return;
+    if ((this._scrollTop || 0) <= 0) {
+      this._pullStartY = e.touches[0].clientY;
+      this._pullActive = true;
+      this.setData({ dragging: true });
+    }
+  },
+
+  onTouchMove(e) {
+    if (!this._pullActive || this.data.refreshing) return;
+    const dy = e.touches[0].clientY - this._pullStartY;
+    if (dy <= 0) {
+      if (this.data.pullH !== 0) this.setData({ pullH: 0, pullText: '', pullReady: false });
+      return;
+    }
+    // 阻尼 + 上限：拉得越远越费劲，最多 110px
+    const h = Math.round(Math.min(dy * 0.55, 110));
+    const ready = h >= 55;
+    // 命中阈值变化或位移超过 2px 才 setData，减少渲染次数
+    if (ready !== this.data.pullReady || Math.abs(h - this.data.pullH) >= 2) {
+      this.setData({
+        pullH: h,
+        pullText: ready ? '松手更新' : '下拉刷新',
+        pullReady: ready,
+      });
+    }
+  },
+
+  onTouchEnd() {
+    if (!this._pullActive) return;
+    this._pullActive = false;
+    if (this.data.pullReady && !this.data.refreshing) {
+      // 松手 → 进入刷新态：图标旋转，收起改为带过渡动画
+      this.setData({
+        dragging: false,
+        pullReady: false,
+        pullH: 60,
+        pullText: '正在刷新…',
+        refreshing: true,
+      });
+      Promise.all([this.load(), this.loadQuota(), this.loadSubscriptions()])
+        .catch(() => {})
+        .then(() => {
+          setTimeout(() => {
+            this.setData({ refreshing: false, pullH: 0, pullText: '' });
+          }, 350);
+        });
+    } else {
+      this.setData({ dragging: false, pullH: 0, pullText: '', pullReady: false });
+    }
+  },
+
   /** 已订阅的节点（examId -> remainTimes），用来把按钮渲染成「已订阅」 */
   loadSubscriptions() {
-    api.fetchSubscriptions()
+    return api.fetchSubscriptions()
       .then((r) => {
         if (!r || !r.ok) return;
         const map = {};
@@ -115,7 +181,7 @@ Page({
 
   /** 顶部显示设置提醒占用情况，方便用户知道还能加几个 */
   loadQuota() {
-    api.fetchQuota()
+    return api.fetchQuota()
       .then((q) => {
         if (q && q.ok !== false && typeof q.remaining === 'number') {
           this.setData({ quotaText: `已用 ${q.used}/${q.limit}，还可加 ${q.remaining} 个` });
@@ -164,10 +230,6 @@ Page({
           });
       },
     });
-  },
-
-  onPullDownRefresh() {
-    this.load().then(() => wx.stopPullDownRefresh());
   },
 
   load() {

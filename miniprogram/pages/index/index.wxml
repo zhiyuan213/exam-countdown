@@ -32,7 +32,18 @@
   </view>
 </template>
 
-<view class="container">
+<view
+  class="container"
+  bindtouchstart="onTouchStart"
+  bindtouchmove="onTouchMove"
+  bindtouchend="onTouchEnd"
+>
+
+  <!-- 自定义下拉刷新区（京东样式：随下拉距离动态变化） -->
+  <view wx:if="{{pullH > 0}}" class="pull-zone {{dragging ? 'dragging' : ''}}" style="height:{{pullH}}px">
+    <text class="pull-icon {{refreshing ? 'spinning' : ''}}">📅</text>
+    <text class="pull-text {{pullReady ? 'ready' : ''}}">{{pullText}}</text>
+  </view>
 
   <view class="hero">
     <text class="hero-icon">📅</text>
