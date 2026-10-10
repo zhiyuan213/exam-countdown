@@ -59,6 +59,14 @@
   opacity: 0.5;
 }
 
+.sub-row--urgent {
+  border-left-color: #e94f4f;
+}
+
+.sub-row--urgent .sub-days {
+  color: #e94f4f;
+}
+
 .sub-main {
   flex: 1;
   min-width: 0;
@@ -120,19 +128,13 @@
   border-left: 6rpx solid #d9dde3;
 }
 
-.node--urgent {
-  border-left-color: #e94f4f;
-}
-
 .node--passed {
   opacity: 0.5;
 }
 
 .node--highlight {
   box-shadow: 0 0 0 3rpx #4a90e2 inset;
-}
-
-.node-main {
+}.node-main {
   flex: 1;
   min-width: 0;
 }
@@ -179,10 +181,6 @@
   font-weight: 600;
   color: #333;
   margin-bottom: 12rpx;
-}
-
-.node--urgent .countdown {
-  color: #e94f4f;
 }
 
 .subscribe-btn {

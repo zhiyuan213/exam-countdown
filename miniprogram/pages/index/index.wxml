@@ -1,6 +1,6 @@
 <template name="nodeItem">
   <view
-    class="node {{node.urgent ? 'node--urgent' : ''}} {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
+    class="node {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
     data-id="{{node.id}}"
     data-name="{{node.name}}"
     data-iscustom="{{node.isCustom}}"
@@ -50,7 +50,7 @@
       <view
         wx:for="{{subList}}"
         wx:key="id"
-        class="sub-row {{item.passed ? 'sub-row--passed' : ''}}"
+        class="sub-row {{item.urgent ? 'sub-row--urgent' : ''}} {{item.passed ? 'sub-row--passed' : ''}}"
         data-id="{{item.id}}"
         data-name="{{item.name}}"
         data-iscustom="{{item.isCustom}}"
