@@ -10,10 +10,12 @@ WORKDIR /app
 
 # 先只拷 pom 下载依赖，命中 Docker 层缓存，改代码不用重新拉依赖
 COPY backend/pom.xml .
-RUN mvn -B dependency:go-offline
+# 构建期走国内 Maven 镜像（中央仓库对云构建机出口 IP 会 429 限流）
+COPY docker/maven-settings.xml /root/.m2/settings.xml
+RUN mvn -B -s /root/.m2/settings.xml dependency:go-offline
 
 COPY backend/src ./src
-RUN mvn -B clean package -DskipTests
+RUN mvn -B -s /root/.m2/settings.xml clean package -DskipTests
 
 # ---------- 运行阶段：仅 JRE，镜像更小 ----------
 FROM eclipse-temurin:17-jre
