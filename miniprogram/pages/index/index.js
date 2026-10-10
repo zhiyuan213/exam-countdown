@@ -65,8 +65,7 @@ Page({
     subscribedMap: {},
     // 自定义下拉刷新
     pullH: 0,
-    pullFlip: 0,
-    pullShade: 0,
+    pullRotate: 0,
     pullText: '',
     pullReady: false,
     dragging: false,
@@ -105,7 +104,7 @@ Page({
     const dy = e.touches[0].clientY - this._pullStartY;
     if (dy <= 0) {
       if (this.data.pullH !== 0) {
-        this.setData({ pullH: 0, pullFlip: 0, pullShade: 0, pullText: '', pullReady: false });
+        this.setData({ pullH: 0, pullRotate: 0, pullText: '', pullReady: false });
       }
       return;
     }
@@ -114,12 +113,11 @@ Page({
     const ready = h >= 55;
     // 命中阈值变化或位移超过 2px 才 setData，减少渲染次数
     if (ready !== this.data.pullReady || Math.abs(h - this.data.pullH) >= 2) {
-      // 翻页进度：拉到阈值(55px)时正好翻到 90°（立起来），拉满 110px 翻完 180°
+      // 图标旋转：拉到上限 110px 时正好左转满一圈（360°），负角度 = 逆时针
       const t = Math.min(1, h / 110);
       this.setData({
         pullH: h,
-        pullFlip: Math.round(t * 180),
-        pullShade: Number((t * 0.22).toFixed(2)),
+        pullRotate: -Math.round(t * 360),
         pullText: ready ? '松手更新' : '下拉刷新',
         pullReady: ready,
       });
@@ -130,12 +128,11 @@ Page({
     if (!this._pullActive) return;
     this._pullActive = false;
     if (this.data.pullReady && !this.data.refreshing) {
-      // 松手 → 进入刷新态：日历持续翻页，收起改为带过渡动画
+      // 松手 → 进入刷新态：图标持续左转，收起改为带过渡动画
       this.setData({
         dragging: false,
         pullReady: false,
-        pullFlip: 0,
-        pullShade: 0,
+        pullRotate: 0,
         pullH: 60,
         pullText: '正在刷新…',
         refreshing: true,
@@ -144,11 +141,19 @@ Page({
         .catch(() => {})
         .then(() => {
           setTimeout(() => {
-            this.setData({ refreshing: false, pullH: 0, pullFlip: 0, pullShade: 0, pullText: '' });
+            // 停止旋转：图标带过渡转回正位，回正后再收起下拉区
+            this.setData({ refreshing: false, pullRotate: 0 });
+            setTimeout(() => {
+              this.setData({ pullH: 0, pullText: '' });
+            }, 320);
           }, 350);
         });
     } else {
-      this.setData({ dragging: false, pullH: 0, pullFlip: 0, pullShade: 0, pullText: '', pullReady: false });
+      // 未达阈值松手：解除 dragging 让过渡生效，图标转回正位后再收起下拉区
+      this.setData({ dragging: false, pullReady: false, pullRotate: 0 });
+      setTimeout(() => {
+        this.setData({ pullH: 0, pullText: '' });
+      }, 340);
     }
   },
 
