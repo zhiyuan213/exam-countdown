@@ -131,13 +131,13 @@ Page({
     this._pullActive = false;
     if (this.data.pullReady && !this.data.refreshing) {
       // 松手 → 进入刷新态：角度从当前值逆时针收回 0° 回正（拉满时即逆时针转满一圈回到起点）；
-      // 刷新中图标不再自转，只用文字「正在刷新…」做反馈
+      // 刷新中图标不再自转，只用文字「正在刷新」做反馈
       this.setData({
         dragging: false,
         pullReady: false,
         pullRotate: 0,
         pullH: 66,
-        pullText: '正在刷新…',
+        pullText: '正在刷新',
         refreshing: true,
       });
       Promise.all([this.load(), this.loadQuota(), this.loadSubscriptions()])
