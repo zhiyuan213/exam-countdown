@@ -7,19 +7,11 @@
   align-items: center;
 }
 
-.delete-btn {
-  font-size: 22rpx !important;
-  line-height: 2.2 !important;
-  padding: 0 20rpx !important;
-  background: #fff !important;
-  color: #e94f4f !important;
-  border: 1rpx solid #f3c2c2 !important;
-  border-radius: 30rpx !important;
-  margin: 0 0 0 12rpx !important;
-}
-
-.delete-btn::after {
-  border: none;
+.mine-hint {
+  font-size: 22rpx;
+  color: #a2aab8;
+  text-align: center;
+  padding: 0 0 8rpx;
 }
 
 .group-title {

@@ -75,11 +75,19 @@ Page({
     wx.navigateTo({ url: '/pages/add/add' });
   },
 
-  onDelete(e) {
-    const { id, name } = e.currentTarget.dataset;
+  /** 长按节点卡片：自建提醒可触发删除，官方节点无额外操作 */
+  onNodeLongpress(e) {
+    const { id, name, iscustom } = e.currentTarget.dataset;
+    if (!iscustom) return;
+    this.doDelete(id, name);
+  },
+
+  /** 删除自建提醒：二次确认后删除，释放额度 */
+  doDelete(id, name) {
     wx.showModal({
       title: '删除提醒',
       content: `确定删除「${name}」吗？删除后不再推送提醒。`,
+      confirmColor: '#e64340',
       success: (res) => {
         if (!res.confirm) {
           return;
@@ -87,6 +95,9 @@ Page({
         api.deleteCustom(id)
           .then((r) => {
             if (r && r.ok) {
+              const map = Object.assign({}, this.data.subscribedMap);
+              delete map[id];
+              this.setData({ subscribedMap: map });
               wx.showToast({ title: '已删除', icon: 'success' });
               this.load();
               this.loadQuota();
@@ -183,24 +194,34 @@ Page({
     return `${days} 天后`;
   },
 
-  /** 点击「订阅提醒」：先请求微信订阅授权，再向后端登记额度 */
+  /**
+   * 点击节点上的状态按钮（统一交互，官方/自建同一套）：
+   * 未订阅 → 直接走订阅授权；
+   * 已订阅 → 操作菜单：再订一次 / 取消订阅 /（自建）删除提醒。
+   */
   onSubscribe(e) {
-    const { id, name, templateid: templateId } = e.currentTarget.dataset;
+    const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
     if (!templateId) {
       wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
       return;
     }
 
-    // 已订阅过：弹出操作菜单，可加订额度或取消订阅
+    // 已订阅过：弹出操作菜单
     const remain = this.data.subscribedMap[id];
     if (remain > 0) {
+      const items = ['再订一次（+1 条推送额度）', '取消订阅'];
+      if (iscustom) {
+        items.push('删除提醒');
+      }
       wx.showActionSheet({
-        itemList: ['再订一次（+1 条推送额度）', '取消订阅'],
+        itemList: items,
         success: (res) => {
           if (res.tapIndex === 0) {
             this.doSubscribe(id, templateId);
           } else if (res.tapIndex === 1) {
             this.doCancel(id, name);
+          } else if (res.tapIndex === 2) {
+            this.doDelete(id, name);
           }
         },
       });

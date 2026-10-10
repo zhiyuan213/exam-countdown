@@ -1,6 +1,10 @@
 <template name="nodeItem">
   <view
     class="node {{node.urgent ? 'node--urgent' : ''}} {{node.passed ? 'node--passed' : ''}} {{highlightId === node.id ? 'node--highlight' : ''}}"
+    data-id="{{node.id}}"
+    data-name="{{node.name}}"
+    data-iscustom="{{node.isCustom}}"
+    bindlongpress="onNodeLongpress"
   >
     <view class="node-main">
       <view class="node-head">
@@ -19,17 +23,10 @@
           size="mini"
           data-id="{{node.id}}"
           data-name="{{node.name}}"
+          data-iscustom="{{node.isCustom}}"
           data-templateid="{{node.templateId}}"
           bindtap="onSubscribe"
         >{{subscribedMap[node.id] ? '已订阅' : '订阅提醒'}}</button>
-        <button
-          wx:if="{{node.isCustom}}"
-          class="delete-btn"
-          size="mini"
-          data-id="{{node.id}}"
-          data-name="{{node.name}}"
-          bindtap="onDelete"
-        >删除</button>
       </view>
     </view>
   </view>
@@ -55,6 +52,7 @@
       </block>
 
       <button class="add-entry" bindtap="onAdd">＋ 添加提醒</button>
+      <view class="mine-hint">提示：长按自定义提醒可删除</view>
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
