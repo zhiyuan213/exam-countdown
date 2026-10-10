@@ -117,6 +117,27 @@ GET /api/job/remind?token=<REMIND_JOB_TOKEN>
 - token 与配置项 `remind.job-token` 全等才执行，否则 `{ "ok": false, "msg": "token 无效" }`
 - 执行成功 → `{ "ok": true }`
 
+### 提醒点策略（重要，2026-10 调整）
+
+微信规则是「一次授权只能推一条」，而任务每天跑一次、**命中最靠前的提醒点就扣掉一次额度**。
+所以每个类型最该被提醒的时刻必须放在最前面，否则用户订 1 次只会收到最早的那条（例如考前 30 天），
+真正的考试前反而收不到。
+
+| 节点类型 | 提醒点（考前天数） | 订 1 次实际收到 |
+|---|---|---|
+| `EXAM` / `SCORE` / `RETEST` / `VOLUNTEER` / `ADMISSION` | `1,0` | 考前一天 |
+| `SIGNUP`（报名类） | `3,1,0` | 提前 3 天 |
+| `TICKET`（准考证类） | `7,1,0` | 提前 7 天 |
+| 自建提醒（`custom-nodes`） | `1,0` | 提醒日的前一天 |
+| 未知类型 | 回落 `remind.nodes`（默认 `30,7,1,0`） | 最早命中的提醒点 |
+
+配置项都可被云托管环境变量覆盖，改提醒点不用改代码、不用重新构建：
+
+- `REMIND_NODES_BY_TYPE`（默认 `EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:3,1,0;TICKET:7,1,0`）
+  格式 `类型:天数,天数;类型:天数`，类型大小写不敏感，可用 `DEFAULT:` 兜底
+- `REMIND_NODES`（默认 `30,7,1,0`，仅当类型未命中时使用）
+- `REMIND_CUSTOM_NODES`（默认 `1,0`）
+
 ---
 
 ## 定时推送逻辑（RemindJob）

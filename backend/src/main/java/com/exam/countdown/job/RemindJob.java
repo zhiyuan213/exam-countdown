@@ -47,9 +47,22 @@ public class RemindJob {
     @Value("${wx.template-id}")
     private String templateId;
 
-    /** 提醒节点：考前 30/7/1 天及当天 */
+    /** 提醒节点：兜底配置（按类型的配置里没命中时用它） */
     @Value("${remind.nodes:30,7,1,0}")
     private String nodesConfig;
+
+    /**
+     * 按节点类型区分的提醒点，格式 "TYPE:节点,节点;TYPE:节点"。
+     *
+     * 为什么要按类型区分：微信「一次授权 = 一条推送」，而推送是命中最靠前的提醒点就扣额度。
+     * 如果所有类型都用 30/7/1/0，用户订 1 次只会收到「考前 30 天」那条，真正的考试前反而没提醒。
+     * 所以把每个类型最该被提醒的时刻放在最前面：
+     *   - EXAM / SCORE / RETEST / VOLUNTEER / ADMISSION：考前 1 天 + 当天
+     *   - SIGNUP（报名类）：提前 3 天 / 1 天 / 当天
+     *   - TICKET（准考证类）：提前 7 天 / 1 天 / 当天
+     */
+    @Value("${remind.nodes-by-type:EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:3,1,0;TICKET:7,1,0}")
+    private String nodesByTypeConfig;
 
     /**
      * 自建提醒的提醒节点，默认「考前 1 天 + 当天」。
@@ -74,13 +87,16 @@ public class RemindJob {
     public void run() {
         LocalDate today = LocalDate.now();
 
-        // ---------- 官方节点：考前 30/7/1 天及当天 ----------
-        Set<Integer> nodes = parseNodes(nodesConfig, "30,7,1,0");
+        // ---------- 官方节点：按节点类型取提醒点 ----------
+        Set<Integer> fallbackNodes = parseNodes(nodesConfig, "30,7,1,0");
+        Map<String, Set<Integer>> nodesByType = parseNodesByType(nodesByTypeConfig);
+
         for (Exam exam : examMapper.selectList(new QueryWrapper<Exam>().eq("status", 1))) {
             long days = ChronoUnit.DAYS.between(today, exam.getExamDate());
+            Set<Integer> nodes = resolveNodes(nodesByType, exam.getNodeType(), fallbackNodes);
             if (nodes.contains((int) days)) {
                 String nodeName = days == 0L ? "DAY" : "D" + days;
-                log.info("命中提醒节点 exam={} node={}", exam.getName(), nodeName);
+                log.info("命中提醒节点 exam={} type={} node={}", exam.getName(), exam.getNodeType(), nodeName);
                 pushExam(exam, days, nodeName);
             }
         }
@@ -109,6 +125,36 @@ public class RemindJob {
             }
         }
         return nodes;
+    }
+
+    /** 解析 "EXAM:1,0;SIGNUP:3,1,0" 形式的按类型配置 */
+    private Map<String, Set<Integer>> parseNodesByType(String config) {
+        Map<String, Set<Integer>> map = new LinkedHashMap<>();
+        if (config == null || config.isBlank()) {
+            return map;
+        }
+        for (String part : config.split(";")) {
+            int idx = part.indexOf(':');
+            if (idx <= 0 || idx == part.length() - 1) {
+                continue;
+            }
+            String type = part.substring(0, idx).trim().toUpperCase();
+            Set<Integer> nodes = parseNodes(part.substring(idx + 1).trim(), "1,0");
+            if (!type.isEmpty() && !nodes.isEmpty()) {
+                map.put(type, nodes);
+            }
+        }
+        return map;
+    }
+
+    /** 取该节点类型的提醒点：优先按类型配置，其次 default，最后兜底全局配置 */
+    private Set<Integer> resolveNodes(Map<String, Set<Integer>> byType, String nodeType, Set<Integer> fallback) {
+        String type = (nodeType == null || nodeType.isBlank()) ? "EXAM" : nodeType.trim().toUpperCase();
+        Set<Integer> hit = byType.get(type);
+        if (hit == null) {
+            hit = byType.get("DEFAULT");
+        }
+        return hit == null ? fallback : hit;
     }
 
     private void pushExam(Exam exam, long days, String nodeName) {
