@@ -189,6 +189,27 @@ function mockCall(path, method, data) {
         }
         console.log('[mock] pay order delivered:', orderId, '+', o.quota, 'paidQuota:', mockPaidQuota);
         resolve({ ok: true, orderId, status: 'DELIVERED', quotaDelta: o.quota, delivered: true });
+      } else if (path === '/api/pay/my-orders' && method === 'GET') {
+        // mock 订单列表：把 mockOrders 还原成后端同构的结构
+        const orders = Object.keys(mockOrders).map((id) => {
+          const o = mockOrders[id];
+          const g = MOCK_GOODS.find((x) => x.quota === o.quota) || {};
+          const ts = Number(String(id).replace('MOCK', '')) || Date.now();
+          const d = new Date(ts);
+          const pad = (n) => (n < 10 ? '0' + n : '' + n);
+          return {
+            outTradeNo: id,
+            goodsName: g.name || '提醒额度包',
+            productId: g.goodsId || 'quota10',
+            quotaDelta: o.quota,
+            priceFen: g.priceFen || 600,
+            actualFen: o.paid ? g.priceFen : null,
+            status: o.paid ? 'DELIVERED' : 'INIT',
+            createdAt: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`,
+          };
+        }).reverse();
+        console.log('[mock] my-orders:', orders.length, '条');
+        resolve({ ok: true, orders });
       } else {
         resolve({});
       }
@@ -285,10 +306,15 @@ function queryPayOrder(orderId) {
   return call('/api/pay/order/' + orderId, 'GET');
 }
 
+/** 订单中心：当前用户的订单列表，返回 { ok, orders: [{outTradeNo, goodsName, quotaDelta, priceFen, actualFen, status, createdAt}] } */
+function myOrders() {
+  return call('/api/pay/my-orders', 'GET');
+}
+
 module.exports = {
   call, login, fetchExams, subscribe, fetchSubscriptions, cancelSubscribe,
   fetchQuota, createCustom, deleteCustom, mockReset,
-  fetchGoods, createPayOrder, queryPayOrder,
+  fetchGoods, createPayOrder, queryPayOrder, myOrders,
   IS_MOCK: USE_MOCK,
   ENV_ID, SERVICE, APP_KEY,
 };

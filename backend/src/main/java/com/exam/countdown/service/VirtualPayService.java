@@ -139,6 +139,41 @@ public class VirtualPayService {
     private final com.exam.countdown.mapper.UserQuotaMapper userQuotaMapper;
 
     // ==========================================================
+    // 订单中心（微信要求交易类小程序提供，提审需登记 path）
+    // ==========================================================
+
+    /** 当前用户的订单列表（按下单时间倒序，最多 50 条），供小程序「订单中心」页展示 */
+    public Map<String, Object> myOrders(String openid) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (openid == null || openid.isBlank()) {
+            out.put("ok", false);
+            out.put("code", "NO_OPENID");
+            out.put("msg", "无法识别用户身份");
+            out.put("orders", Collections.emptyList());
+            return out;
+        }
+        List<Map<String, Object>> orders = new ArrayList<>();
+        for (PayOrder po : payOrderMapper.selectList(new QueryWrapper<PayOrder>()
+                .eq("openid", openid.trim())
+                .orderByDesc("created_at")
+                .last("LIMIT 50"))) {
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("outTradeNo", po.getOutTradeNo());
+            o.put("goodsName", po.getGoodsName());
+            o.put("productId", po.getProductId());
+            o.put("quotaDelta", po.getQuotaDelta());
+            o.put("priceFen", po.getPriceFen());
+            o.put("actualFen", po.getActualFen());
+            o.put("status", po.getStatus());
+            o.put("createdAt", String.valueOf(po.getCreatedAt()));
+            orders.add(o);
+        }
+        out.put("ok", true);
+        out.put("orders", orders);
+        return out;
+    }
+
+    // ==========================================================
     // 管理端（token 保护）：对账与修数
     // ==========================================================
 

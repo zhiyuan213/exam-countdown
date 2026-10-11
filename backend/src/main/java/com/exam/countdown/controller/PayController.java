@@ -98,6 +98,17 @@ public class PayController {
         return payService.localOrder(outTradeNo, OpenidSupport.resolve(fromOpenid, cloudOpenid, null));
     }
 
+    /**
+     * 订单中心：当前用户的订单列表（openid 由云托管注入，无需登录）。
+     * 微信要求「选购商品-下单-支付」类小程序提供订单中心页并在提审时登记 path。
+     */
+    @GetMapping("/my-orders")
+    public Map<String, Object> myOrders(
+            @RequestHeader(value = "X-WX-FROM-OPENID", required = false) String fromOpenid,
+            @RequestHeader(value = "X-WX-OPENID", required = false) String cloudOpenid) {
+        return payService.myOrders(OpenidSupport.resolve(fromOpenid, cloudOpenid, null));
+    }
+
     /** 兜底查单：挂在云托管定时任务上（和提醒任务一样带 token） */
     @PostMapping("/recheck")
     public Map<String, Object> recheck(@RequestParam(required = false) String token) {

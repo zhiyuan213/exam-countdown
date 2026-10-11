@@ -1,0 +1,89 @@
+.page {
+  padding: 24rpx 24rpx 60rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 空态 / 加载态 */
+.empty {
+  padding-top: 220rpx;
+  text-align: center;
+}
+.empty-icon {
+  font-size: 72rpx;
+  margin-bottom: 20rpx;
+}
+.empty-text {
+  font-size: 30rpx;
+  color: #666;
+}
+.empty-sub {
+  font-size: 24rpx;
+  color: #aab3c0;
+  margin-top: 10rpx;
+}
+
+/* 订单卡片：与首页卡片同款立体感（浅边框 + 双层阴影） */
+.card {
+  background: #fff;
+  border: 1rpx solid #e8eef7;
+  border-radius: 16rpx;
+  padding: 24rpx 26rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 6rpx 16rpx rgba(74, 144, 226, 0.12), 0 2rpx 4rpx rgba(74, 144, 226, 0.06);
+}
+
+.row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+.status {
+  font-size: 24rpx;
+  color: #999;
+}
+.status.ok {
+  color: #2eaa63;
+}
+.status.refund {
+  color: #e64340;
+}
+
+.row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+}
+.quota {
+  font-size: 26rpx;
+  color: #4a90e2;
+}
+.amount {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.row3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+}
+.meta {
+  font-size: 22rpx;
+  color: #b0b8c4;
+}
+
+.tip {
+  text-align: center;
+  font-size: 22rpx;
+  color: #b0b8c4;
+  margin-top: 24rpx;
+}

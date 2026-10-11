@@ -309,6 +309,18 @@ GET /api/pay/order/{orderId}
 
 **前端 `wx.requestVirtualPayment` 的 success 只算弱确认**，必须以本接口（后端状态）为准。发货由微信推送驱动、后端异步到账，所以前端轮询几次即可，没到账就提示「稍后到账」，不会丢单。
 
+### 订单中心（当前用户订单列表）
+
+```
+GET /api/pay/my-orders
+→ { "ok": true, "orders": [ { "outTradeNo": "...", "goodsName": "永久增加6个提醒额度",
+      "productId": "quota10", "quotaDelta": 6, "priceFen": 600, "actualFen": 600,
+      "status": "DELIVERED", "createdAt": "2026-10-11T17:30:00" } ] }
+```
+
+- openid 由云托管注入（`X-WX-OPENID`），无需登录；按下单时间倒序，最多 50 条
+- 用途：小程序「订单中心」页 `pages/orders/orders`（微信要求「选购商品-下单-支付」类小程序提供订单中心页，提审需登记主 path）
+
 ### 发货推送（微信 → 本服务）
 
 推送地址配置在 mp 后台「虚拟支付 → 基本配置 → 基础配置 → 发货推送配置」：

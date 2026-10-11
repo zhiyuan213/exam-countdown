@@ -1,0 +1,30 @@
+<view class="page">
+  <!-- 加载中 -->
+  <view wx:if="{{loading && !orders.length}}" class="empty">加载中…</view>
+
+  <!-- 空态 -->
+  <view wx:elif="{{!orders.length}}" class="empty">
+    <view class="empty-icon">🧾</view>
+    <view class="empty-text">暂无订单</view>
+    <view class="empty-sub">购买提醒额度包后，订单会显示在这里</view>
+  </view>
+
+  <!-- 订单列表 -->
+  <view wx:else>
+    <view class="card" wx:for="{{orders}}" wx:key="outTradeNo">
+      <view class="row1">
+        <text class="name">{{item.name}}</text>
+        <text class="status {{item.statusClass}}">{{item.statusText}}</text>
+      </view>
+      <view class="row2">
+        <text class="quota">提醒额度 +{{item.quota}} 个</text>
+        <text class="amount">¥{{item.amount}}</text>
+      </view>
+      <view class="row3">
+        <text class="meta">单号 {{item.outTradeNo}}</text>
+        <text class="meta">{{item.time}}</text>
+      </view>
+    </view>
+    <view class="tip">额度永久有效；已退款订单会自动扣回对应额度</view>
+  </view>
+</view>

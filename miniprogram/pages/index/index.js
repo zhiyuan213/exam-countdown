@@ -259,6 +259,12 @@ Page({
     wx.navigateTo({ url: '/pages/add/add' });
   },
 
+  /** 订单中心：查看额度包订单（微信要求交易类小程序提供订单中心页） */
+  onOrders() {
+    console.log('[exam][tap] 打开订单中心');
+    wx.navigateTo({ url: '/pages/orders/orders' });
+  },
+
   /** 额度用完 / 主动购买：确认后走购买流程 */
   onBuyQuota() {
     this.promptBuy();

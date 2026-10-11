@@ -99,6 +99,7 @@
       <view class="group-head">
         <text class="group-title">定制提醒</text>
         <text class="group-hint">{{quotaText || '免费 2 个'}}</text>
+        <text class="quota-buy quota-orders" bindtap="onOrders">订单</text>
         <text class="quota-buy" bindtap="onBuyQuota">额度包 ›</text>
       </view>
 

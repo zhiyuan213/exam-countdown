@@ -241,6 +241,11 @@
   flex-shrink: 0;
 }
 
+/* 订单中心入口：与「额度包」并排靠右，灰色弱化 */
+.quota-orders {
+  color: #7a8aa0;
+}
+
 /* 官方分组标题右侧的批量订阅 / 批量取消 */
 .group-acts {
   display: flex;
