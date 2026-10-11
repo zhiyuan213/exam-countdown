@@ -18,12 +18,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const REMIND_NODES = {
   SIGNUP: [2, 1, 0],
   TICKET: [2, 1, 0],
-  EXAM: [1, 0],
-  SCORE: [1, 0],
-  RETEST: [1, 0],
-  VOLUNTEER: [1, 0],
-  ADMISSION: [1, 0],
-  CUSTOM: [1, 0],
+  EXAM: [2, 1, 0],
+  SCORE: [2, 1, 0],
+  RETEST: [2, 1, 0],
+  VOLUNTEER: [2, 1, 0],
+  ADMISSION: [2, 1, 0],
+  CUSTOM: [2, 1, 0],
 };
 
 /** 推送时间点：后端 RemindJob 每天定时执行（默认 08:00） */
@@ -52,12 +52,12 @@ function daysLeft(dateStr) {
 
 /**
  * 还没错过的提醒点（考前第 N 天，按推送时间先后排序）。
- * 提醒点按节点类型固定配置（如自建 = 前 1 天 + 当天），与后端 RemindJob 同步；
+ * 提醒点按节点类型固定配置（统一为当天/前1天/前2天），与后端 RemindJob 同步；
  * 因此「再订」多攒的额度超过提醒点数后就再也消费不掉 —— 展示和入口都要按有效次数算。
  */
 function futurePushDays(nodeType, examDate) {
   const days = daysLeft(examDate);
-  const list = (REMIND_NODES[nodeType] || [1, 0])
+  const list = (REMIND_NODES[nodeType] || [2, 1, 0])
     .filter((d) => d <= days)
     .sort((a, b) => b - a); // 时间正序：D-7 早于 D-1 早于 D-0
   // 推送时刻（08:00）已过就不再是未来时点：d == days 的时点推送日就是今天，
@@ -653,7 +653,7 @@ Page({
 
   /**
    * 「再订 1 条提醒」入口：先判断再订还有没有意义。
-   * 提醒点按节点类型固定（如自建 = 前 1 天 + 当天），剩余额度已覆盖全部未来
+   * 提醒点按节点类型固定（统一为当天/前1天/前2天），剩余额度已覆盖全部未来
    * 提醒点时，再订拿到的授权永远消费不掉，只会让「剩余次数」虚高 —— 直接说明，不拉授权。
    */
   onResubscribeTap(id, name, templateId) {

@@ -48,7 +48,7 @@ public class RemindJob {
     private String templateId;
 
     /** 提醒节点：兜底配置（按类型的配置里没命中时用它） */
-    @Value("${remind.nodes:30,7,1,0}")
+    @Value("${remind.nodes:2,1,0}")
     private String nodesConfig;
 
     /**
@@ -56,18 +56,16 @@ public class RemindJob {
      *
      * 为什么要按类型区分：微信「一次授权 = 一条推送」，而推送是命中最靠前的提醒点就扣额度。
      * 如果所有类型都用 30/7/1/0，用户订 1 次只会收到「考前 30 天」那条，真正的考试前反而没提醒。
-     * 所以把每个类型最该被提醒的时刻放在最前面，节奏统一为「当天 / 前 1 天 / 前 2 天」连续三天：
-     *   - EXAM / SCORE / RETEST / VOLUNTEER / ADMISSION：考前 1 天 + 当天
-     *   - SIGNUP（报名类）/ TICKET（准考证类）：前 2 天 / 前 1 天 / 当天
+     * 现在所有类型（含自建）统一为「当天 / 前 1 天 / 前 2 天」连续三天，共 3 条。
      */
-    @Value("${remind.nodes-by-type:EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:2,1,0;TICKET:2,1,0}")
+    @Value("${remind.nodes-by-type:EXAM:2,1,0;SCORE:2,1,0;RETEST:2,1,0;VOLUNTEER:2,1,0;ADMISSION:2,1,0;SIGNUP:2,1,0;TICKET:2,1,0}")
     private String nodesByTypeConfig;
 
     /**
-     * 自建提醒的提醒节点，默认「考前 1 天 + 当天」。
+     * 自建提醒的提醒节点，与官方节点统一：当天 / 前 1 天 / 前 2 天（共 3 条）。
      * 不做 30/7 天那么多点：一次性订阅每推一条都要用户当场授权，点太多授权体验很差。
      */
-    @Value("${remind.custom-nodes:1,0}")
+    @Value("${remind.custom-nodes:2,1,0}")
     private String customNodesConfig;
 
     public RemindJob(ExamMapper examMapper,
@@ -100,8 +98,8 @@ public class RemindJob {
             }
         }
 
-        // ---------- 用户自建节点：默认只在考前 1 天与当天提醒 ----------
-        Set<Integer> customNodes = parseNodes(customNodesConfig, "1,0");
+        // ---------- 用户自建节点：与官方节点一致的提醒节奏（当天/前1天/前2天） ----------
+        Set<Integer> customNodes = parseNodes(customNodesConfig, "2,1,0");
         for (UserExam ue : userExamMapper.selectList(new QueryWrapper<UserExam>()
                 .eq("status", 1)
                 .ge("exam_date", today))) {

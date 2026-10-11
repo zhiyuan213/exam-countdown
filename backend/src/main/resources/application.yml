@@ -62,8 +62,8 @@ remind:
   # 按节点类型区分的提醒点（可用环境变量 REMIND_NODES_BY_TYPE 覆盖）。
   # 原因：一次授权只能推一条，推送命中最靠前的提醒点就扣额度，所以每个类型最该被提醒的时刻要放最前面。
   # 节奏统一为「当天 / 前 1 天 / 前 2 天」连续三天，好理解也不漏关键日。
-  nodes-by-type: ${REMIND_NODES_BY_TYPE:EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:2,1,0;TICKET:2,1,0}
-  custom-nodes: ${REMIND_CUSTOM_NODES:1,0}        # 用户自建提醒：考前 1 天及当天（一次性订阅要逐次授权，点太多体验差）
+  nodes-by-type: ${REMIND_NODES_BY_TYPE:EXAM:2,1,0;SCORE:2,1,0;RETEST:2,1,0;VOLUNTEER:2,1,0;ADMISSION:2,1,0;SIGNUP:2,1,0;TICKET:2,1,0}
+  custom-nodes: ${REMIND_CUSTOM_NODES:2,1,0}      # 用户自建提醒：与官方节点一致，当天/前1天/前2天共 3 条
   job-token: ${REMIND_JOB_TOKEN:change-me}  # 云托管定时任务调用 /api/job/remind 的口令
 
 # 用户自建提醒额度：free_quota 默认 2（建行时写入 user_quota 表，老库已有行由 schema.sql 的幂等 UPDATE 对齐）。

@@ -45,7 +45,7 @@
 
   <view class="tips">
     <view class="tips-title">提醒机制说明</view>
-    <view class="tips-item">1. 微信规定「一次授权只能推送一条」，所以会在<b>考前 1 天</b>和<b>当天</b>各提醒一次</view>
+    <view class="tips-item">1. 微信规定「一次授权只能推送一条」，所以会在<b>前 2 天</b>、<b>前 1 天</b>和<b>当天</b>各提醒一次</view>
     <view class="tips-item">2. 想收到提醒，保存时需要点「允许」授权；没授权也不会报错，之后可以在首页补订</view>
     <view class="tips-item">3. 提醒过期后会自动释放额度，可以继续添加新的</view>
     <view class="tips-item">4. 同一账号可同时管理的提醒数量有限，删除即释放</view>
