@@ -339,9 +339,16 @@ Page({
       wx.showToast({ title: '没有需要订阅的节点', icon: 'none' });
       return;
     }
+    // 系统授权弹窗只显示模板名（所有节点共用一个模板时长得一样），
+    // 所以在确认弹窗里把订阅顺序列出来，用户按序号对照即可知道当前授权的是谁
+    const list = targets
+      .slice(0, 6)
+      .map((n, idx) => `${idx + 1}. ${n.name}（${n.examDate}）`)
+      .join('\n');
+    const more = targets.length > 6 ? `\n…等共 ${targets.length} 个` : '';
     wx.showModal({
       title: '批量订阅',
-      content: `将订阅「${group.groupName}」下 ${targets.length} 个未过期节点，会依次弹出授权确认，请逐个允许。`,
+      content: `将依次授权以下 ${targets.length} 个节点的提醒，系统弹窗的弹出顺序与清单一致：\n${list}${more}`,
       confirmText: '开始订阅',
       cancelText: '取消',
       success: (res) => {
@@ -392,7 +399,7 @@ Page({
                 if (/TAP|gesture/i.test(msg) && i + 1 <= targets.length) {
                   wx.showModal({
                     title: '继续授权',
-                    content: `还剩 ${targets.length - i} 个节点待授权，点「继续」弹出下一条授权。`,
+                    content: `下一条是「${node.name}」（${node.examDate}），点「继续」弹出它的授权。`,
                     confirmText: '继续',
                     cancelText: '跳过',
                     success: (m) => {
