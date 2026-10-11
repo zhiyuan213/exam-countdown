@@ -50,6 +50,18 @@ function daysLeft(dateStr) {
   return Math.round((parseDate(dateStr) - t0) / DAY_MS);
 }
 
+/**
+ * 还没错过的提醒点（考前第 N 天，按推送时间先后排序）。
+ * 提醒点按节点类型固定配置（如自建 = 前 1 天 + 当天），与后端 RemindJob 同步；
+ * 因此「再订」多攒的额度超过提醒点数后就再也消费不掉 —— 展示和入口都要按有效次数算。
+ */
+function futurePushDays(nodeType, examDate) {
+  const days = daysLeft(examDate);
+  return (REMIND_NODES[nodeType] || [1, 0])
+    .filter((d) => d <= days)
+    .sort((a, b) => b - a); // 时间正序：D-7 早于 D-1 早于 D-0
+}
+
 Page({
   data: {
     loading: true,
@@ -182,18 +194,20 @@ Page({
     const list = nodes
       .filter((n) => !n.passed && map[n.id] > 0)
       .map((n) => {
-        const days = daysLeft(n.examDate);
-        // 还没错过的提醒点，按推送时间先后（D 值大的先推）；每次推送消耗 1 次
-        // 额度，剩余 N 次就列出接下来真正会推送的 N 个时间点（额度用完即止）
+        // 列出的时间点 = 未来真正会推送的时刻。剩余额度超过提醒点数时，多出的
+        // 部分永远消费不掉，所以展示「还可提醒 X 次」（X = min(剩余, 提醒点数)），
+        // 让数字和下面列出的日期条数严格一致。
+        const futureDays = futurePushDays(n.nodeType, n.examDate);
+        const remain = map[n.id];
+        const effectiveTimes = Math.min(remain, futureDays.length);
         const examTs = parseDate(n.examDate);
-        const pushTimes = (REMIND_NODES[n.nodeType] || [1, 0])
-          .filter((d) => d <= days)
-          .sort((a, b) => b - a) // 时间正序：D-7 早于 D-1 早于 D-0
+        const pushTimes = futureDays
           .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`)
-          .slice(0, map[n.id]);
+          .slice(0, effectiveTimes);
         if (pushTimes.length === 0) pushTimes.push(`${n.examDate} ${PUSH_TIME}`);
         return Object.assign({}, n, {
-          remainTimes: map[n.id],
+          remainTimes: remain,
+          effectiveTimes,
           pushTimes,
         });
       })
@@ -413,7 +427,7 @@ Page({
       itemList: items,
       success: (res) => {
         if (res.tapIndex === 0) {
-          this.confirmResubscribe(id, name, templateId);
+          this.onResubscribeTap(id, name, templateId);
         } else if (res.tapIndex === 1) {
           this.doCancel(id, name);
         } else if (res.tapIndex === 2) {
@@ -452,6 +466,29 @@ Page({
   },
 
   /**
+   * 「再订 1 条提醒」入口：先判断再订还有没有意义。
+   * 提醒点按节点类型固定（如自建 = 前 1 天 + 当天），剩余额度已覆盖全部未来
+   * 提醒点时，再订拿到的授权永远消费不掉，只会让「剩余次数」虚高 —— 直接说明，不拉授权。
+   */
+  onResubscribeTap(id, name, templateId) {
+    const node = (this._allNodes || []).find((n) => n.id === id);
+    const remain = this.data.subscribedMap[id] || 0;
+    const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
+    if (futureDays.length > 0 && remain >= futureDays.length) {
+      const examTs = parseDate(node.examDate);
+      const dates = futureDays.map((d) => fmtDate(examTs - d * DAY_MS)).join('、');
+      wx.showModal({
+        title: '提醒次数已足够',
+        content: `「${name}」接下来最多还会提醒 ${futureDays.length} 次（${dates} 各一次），当前剩余次数已足够，再订也不会多收提醒。`,
+        showCancel: false,
+        confirmText: '知道了',
+      });
+      return;
+    }
+    this.confirmResubscribe(id, name, templateId);
+  },
+
+  /**
    * 再订一条提醒前的说明弹窗。
    * 微信规定「授权一次只能推一条」，所以每多要一条提醒都得重新拉起一次授权；
    * 用户看到系统授权弹窗时常常不知道自己在授权什么，这里先讲清楚再走授权。
@@ -484,7 +521,13 @@ Page({
               const map = Object.assign({}, this.data.subscribedMap);
               map[id] = r.remainTimes;
               this.setData({ subscribedMap: map }, () => this.buildSubList());
-              wx.showToast({ title: `已订阅，剩余 ${r.remainTimes} 次`, icon: 'none' });
+              // 提示有效次数（与消息清单口径一致），避免「剩余 6 次」这种兑现不了的数字
+              const node = (this._allNodes || []).find((n) => n.id === id);
+              const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
+              const effective = futureDays.length
+                ? Math.min(r.remainTimes, futureDays.length)
+                : r.remainTimes;
+              wx.showToast({ title: `已订阅，还可提醒 ${effective} 次`, icon: 'none' });
             } else {
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });
             }
