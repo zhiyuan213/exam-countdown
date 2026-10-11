@@ -56,12 +56,11 @@ public class RemindJob {
      *
      * 为什么要按类型区分：微信「一次授权 = 一条推送」，而推送是命中最靠前的提醒点就扣额度。
      * 如果所有类型都用 30/7/1/0，用户订 1 次只会收到「考前 30 天」那条，真正的考试前反而没提醒。
-     * 所以把每个类型最该被提醒的时刻放在最前面：
+     * 所以把每个类型最该被提醒的时刻放在最前面，节奏统一为「当天 / 前 1 天 / 前 2 天」连续三天：
      *   - EXAM / SCORE / RETEST / VOLUNTEER / ADMISSION：考前 1 天 + 当天
-     *   - SIGNUP（报名类）：提前 3 天 / 1 天 / 当天
-     *   - TICKET（准考证类）：提前 7 天 / 1 天 / 当天
+     *   - SIGNUP（报名类）/ TICKET（准考证类）：前 2 天 / 前 1 天 / 当天
      */
-    @Value("${remind.nodes-by-type:EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:3,1,0;TICKET:7,1,0}")
+    @Value("${remind.nodes-by-type:EXAM:1,0;SCORE:1,0;RETEST:1,0;VOLUNTEER:1,0;ADMISSION:1,0;SIGNUP:2,1,0;TICKET:2,1,0}")
     private String nodesByTypeConfig;
 
     /**

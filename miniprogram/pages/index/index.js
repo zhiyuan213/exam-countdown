@@ -16,8 +16,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 各节点类型的提醒点（考前第 N 天），与后端 remind.nodes-by-type 默认值保持一致 */
 const REMIND_NODES = {
-  SIGNUP: [3, 1, 0],
-  TICKET: [7, 1, 0],
+  SIGNUP: [2, 1, 0],
+  TICKET: [2, 1, 0],
   EXAM: [1, 0],
   SCORE: [1, 0],
   RETEST: [1, 0],
