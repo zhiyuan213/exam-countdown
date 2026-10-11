@@ -1,6 +1,7 @@
 package com.exam.countdown.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.exam.countdown.dto.QuotaResp;
 import com.exam.countdown.entity.UserExam;
 import com.exam.countdown.entity.UserQuota;
@@ -85,13 +86,21 @@ public class QuotaService {
     }
 
     /**
-     * 支付成功后累加已购额度（二期接入虚拟支付时由回调调用，一期不使用）。
+     * 支付成功后累加已购额度。
+     *
+     * 用 SQL 原子自增（`paid_quota = paid_quota + delta`）而不是「读出来加再写回」——
+     * 后者在并发发货（微信推送 / 兜底定时任务同时到达，或用户连买两单）时会丢更新：
+     * 两个请求读到同一基数、各自写回，导致少发额度。
      */
     public QuotaResp addPaidQuota(String openid, int delta) {
-        UserQuota q = ensure(openid);
-        q.setPaidQuota(Math.max(q.getPaidQuota() + delta, 0));
-        quotaMapper.updateById(q);
-        log.info("paid_quota 累加 openid={} delta={} -> {}", openid, delta, q.getPaidQuota());
+        if (delta == 0) {
+            return view(openid);
+        }
+        ensure(openid);   // 保证记录存在（首次购买的用户可能还没有 user_quota 行）
+        quotaMapper.update(null, new UpdateWrapper<UserQuota>()
+                .eq("openid", openid)
+                .setSql("paid_quota = IFNULL(paid_quota, 0) + (" + delta + ")"));
+        log.info("paid_quota 原子累加 openid={} delta={}", openid, delta);
         return view(openid);
     }
 }

@@ -1,6 +1,7 @@
 package com.exam.countdown.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.exam.countdown.dto.PayGoods;
 import com.exam.countdown.entity.PayOrder;
 import com.exam.countdown.mapper.PayOrderMapper;
@@ -362,29 +363,56 @@ public class VirtualPayService {
             }
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        order.setStatus("DELIVERED");
-        order.setWxOrderId(wxOrderId);
-        order.setTransactionId(transactionId);
-        order.setActualFen(actualFen);
-        order.setNotifyCount((order.getNotifyCount() == null ? 0 : order.getNotifyCount()) + 1);
-        if (order.getPaidAt() == null) {
-            order.setPaidAt(now);
-        }
-        order.setDeliveredAt(now);
-        payOrderMapper.updateById(order);
-
+        // 原子占用订单并发放额度（CAS）：微信推送与兜底定时任务可能并发处理同一订单，
+        // 只有把 status 从非 DELIVERED 改成 DELIVERED 成功的那一方才发额度，避免重复发货
         int delta = order.getQuotaDelta() == null ? 0 : order.getQuotaDelta();
-        if (delta > 0) {
-            try {
-                quotaService.addPaidQuota(order.getOpenid(), delta);
-            } catch (Exception e) {
-                // 额度发放失败要抛出去：订单已是 DELIVERED，靠人工/日志补偿
-                log.error("额度发放失败 order={} openid={} delta={}: {}", outTradeNo, order.getOpenid(), delta, e.toString());
-                throw e;
-            }
+        try {
+            claimAndDeliver(outTradeNo, order.getOpenid(), delta,
+                    wxOrderId, transactionId, actualFen, "push");
+        } catch (Exception e) {
+            // 额度发放失败要抛出去：订单已是 DELIVERED，靠人工/日志补偿
+            log.error("额度发放失败 order={} openid={} delta={}: {}", outTradeNo, order.getOpenid(), delta, e.toString());
+            throw e;
         }
-        log.info("发货完成 order={} openid={} +{} 个额度", outTradeNo, order.getOpenid(), delta);
+        return true;
+    }
+
+    /**
+     * 原子占用订单并发货：用 CAS（`UPDATE ... WHERE status <> 'DELIVERED'`）把订单置为已发货，
+     * **只有拿到 1 行更新影响的调用方才会发放额度**。
+     *
+     * 为什么需要：发货有两条触发通道 —— ① 微信发货推送（实时）② {@link #recheckPending()} 兜底查单
+     * （每 10 分钟定时）。两者可能同时读到同一笔 INIT 订单、同时通过状态判断，若不做 CAS 就会重复发放。
+     *
+     * @return true = 本次调用真正完成了发货；false = 已被其他通道抢先发货
+     */
+    private boolean claimAndDeliver(String outTradeNo, String openid, int delta,
+                                    String wxOrderId, String transactionId, Integer actualFen,
+                                    String source) {
+        UpdateWrapper<PayOrder> uw = new UpdateWrapper<PayOrder>()
+                .eq("out_trade_no", outTradeNo)
+                .ne("status", "DELIVERED")
+                .set("status", "DELIVERED")
+                .set("delivered_at", LocalDateTime.now())
+                .setSql("notify_count = IFNULL(notify_count, 0) + 1")
+                .setSql("paid_at = IFNULL(paid_at, NOW())");
+        if (wxOrderId != null && !wxOrderId.isBlank()) {
+            uw.set("wx_order_id", wxOrderId);
+        }
+        if (transactionId != null && !transactionId.isBlank()) {
+            uw.set("transaction_id", transactionId);
+        }
+        if (actualFen != null) {
+            uw.set("actual_fen", actualFen);
+        }
+        if (payOrderMapper.update(null, uw) != 1) {
+            log.info("订单已被其他通道发货，跳过（并发保护）order={} via={}", outTradeNo, source);
+            return false;
+        }
+        if (delta > 0) {
+            quotaService.addPaidQuota(openid, delta);
+        }
+        log.info("发货完成 order={} openid={} +{} 个额度 via={}", outTradeNo, openid, delta, source);
         return true;
     }
 
@@ -431,23 +459,11 @@ public class VirtualPayService {
         return out;
     }
 
-    /** 查单确认已支付后按同样口径发货 */
+    /** 查单确认已支付后按同样口径发货（走同一 CAS，与推送通道并发安全） */
     private boolean deliverByQuery(PayOrder order) {
-        if ("DELIVERED".equals(order.getStatus())) {
-            return false;
-        }
-        LocalDateTime now = LocalDateTime.now();
-        order.setStatus("DELIVERED");
-        order.setPaidAt(order.getPaidAt() == null ? now : order.getPaidAt());
-        order.setDeliveredAt(now);
-        order.setNotifyCount((order.getNotifyCount() == null ? 0 : order.getNotifyCount()) + 1);
-        payOrderMapper.updateById(order);
         int delta = order.getQuotaDelta() == null ? 0 : order.getQuotaDelta();
-        if (delta > 0) {
-            quotaService.addPaidQuota(order.getOpenid(), delta);
-        }
-        log.info("查单补发完成 order={} openid={} +{} 个额度", order.getOutTradeNo(), order.getOpenid(), delta);
-        return true;
+        return claimAndDeliver(order.getOutTradeNo(), order.getOpenid(), delta,
+                null, null, null, "recheck");
     }
 
     /**
