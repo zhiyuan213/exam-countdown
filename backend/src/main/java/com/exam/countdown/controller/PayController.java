@@ -131,11 +131,17 @@ public class PayController {
         boolean xml = raw != null && raw.trim().startsWith("<");
         log.info("收到支付消息推送: {} (x-wx-sources={})", raw, wxSources);
 
-        // 云托管内网通道（消息推送走云托管）不带签名参数，以 x-wx-sources 头标识微信侧来源；
-        // 仅当走公网 URL 且配置了 pushToken 时才做签名校验
+        // 云托管内网通道以 x-wx-sources 头标识微信侧来源。
+        // 实测：云托管转发的微信推送既不带 signature 参数、也不带 x-wx-sources 头，
+        // 因此「无签名参数」不能判为失败，否则所有推送都会被拒（曾因此漏发货）。
+        // 处理：有签名参数但校验失败 -> 直接拒；无签名参数 -> 放行到 deliver()，
+        //      由 deliver() 调微信查单核验该单确实已支付后才发货（防伪造推送白拿额度）。
         boolean viaWxInternal = wxSources != null && !wxSources.isBlank();
-        if (!viaWxInternal && pushToken != null && !pushToken.isBlank()
-                && !PushSignUtil.check(pushToken, timestamp, nonce, signature)) {
+        boolean sigPresent = signature != null && !signature.isBlank();
+        boolean tokenConfigured = pushToken != null && !pushToken.isBlank();
+        boolean sigVerified = viaWxInternal
+                || (tokenConfigured && sigPresent && PushSignUtil.check(pushToken, timestamp, nonce, signature));
+        if (tokenConfigured && sigPresent && !sigVerified) {
             log.warn("推送签名校验不通过，拒绝处理");
             return reply(xml, false, "signature check failed");
         }
@@ -156,7 +162,7 @@ public class PayController {
 
         boolean ok;
         try {
-            ok = payService.deliver(node);
+            ok = payService.deliver(node, sigVerified);
         } catch (Exception e) {
             log.error("发货处理异常: {}", e.toString());
             ok = false;

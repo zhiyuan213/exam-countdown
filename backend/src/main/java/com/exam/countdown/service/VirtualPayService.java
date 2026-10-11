@@ -289,9 +289,13 @@ public class VirtualPayService {
      * 处理 xpay_goods_deliver_notify。
      * 幂等两道闸：① 订单已 DELIVERED 直接返回成功；② 同一微信平台单号已发过货也返回成功。
      *
+     * @param trusted 推送是否已通过签名 / 内网通道验证。为 false 时（实测云托管转发的微信推送
+     *                不带签名参数）先调 /xpay/query_order 核验该单是否真的已支付：明确查到「未支付」
+     *                则拒绝发货，防止伪造推送白拿额度；查单不可用（接口异常 / 字段口径不符）时
+     *                不阻断，避免因查单故障漏发货（漏发货可由 recheck 定时兜底补发）。
      * @return true = 已确认发货（HTTP 应答 0，微信不再重推）
      */
-    public boolean deliver(JsonNode notify) {
+    public boolean deliver(JsonNode notify, boolean trusted) {
         String outTradeNo = text(notify, "OutTradeNo");
         String notifyOpenid = text(notify, "OpenId");
         Integer notifyEnv = intVal(notify, "Env");
@@ -330,6 +334,21 @@ public class VirtualPayService {
             if (dup != null && dup > 0) {
                 log.warn("同一微信平台单号已发过货，跳过: wxOrderId={} outTradeNo={}", wxOrderId, outTradeNo);
                 return true;
+            }
+        }
+
+        // 未签名推送（云托管转发的微信推送常态）：先查单核验是否真的已支付
+        if (!trusted) {
+            Boolean paid = queryPaid(outTradeNo, notifyOpenid == null ? order.getOpenid() : notifyOpenid,
+                    notifyEnv == null ? env : notifyEnv);
+            if (Boolean.FALSE.equals(paid)) {
+                log.error("未签名推送且查单确认未支付，拒绝发货: {}", outTradeNo);
+                return false;
+            }
+            if (paid == null) {
+                log.warn("未签名推送，查单无法确认（放行发货，仅依赖本地订单校验）: {}", outTradeNo);
+            } else {
+                log.info("未签名推送，已查单确认支付: {}", outTradeNo);
             }
         }
 
@@ -424,6 +443,35 @@ public class VirtualPayService {
         }
         log.info("查单补发完成 order={} openid={} +{} 个额度", order.getOutTradeNo(), order.getOpenid(), delta);
         return true;
+    }
+
+    /**
+     * 查单核验：返回 Boolean.TRUE=已支付 / Boolean.FALSE=明确未支付 / null=无法确认。
+     * 只在拿到明确答复时才返回非 null，避免因接口口径变化误判而阻断正常发货。
+     */
+    private Boolean queryPaid(String outTradeNo, String openid, int orderEnv) {
+        try {
+            JsonNode r = queryOrder(outTradeNo, openid, orderEnv);
+            if (r == null) {
+                return null;
+            }
+            int errcode = r.path("errcode").asInt(0);
+            if (errcode != 0) {
+                log.warn("查单核验返回 errcode={}: {}", errcode, r);
+                return null;
+            }
+            JsonNode st = r.path("order_status");
+            if (!st.isNumber()) {
+                st = r.path("status");
+            }
+            if (!st.isNumber()) {
+                return null;
+            }
+            return st.asInt() == QUERY_ORDER_STATUS_PAID;
+        } catch (Exception e) {
+            log.warn("查单核验异常: {}", e.toString());
+            return null;
+        }
     }
 
     /** 调 /xpay/query_order。云调用优先，失败降级到 access_token 通道 */
