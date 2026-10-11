@@ -96,7 +96,7 @@ public class RemindJob {
             if (nodes.contains((int) days)) {
                 String nodeName = days == 0L ? "DAY" : "D" + days;
                 log.info("命中提醒节点 exam={} type={} node={}", exam.getName(), exam.getNodeType(), nodeName);
-                pushExam(exam, days, nodeName);
+                pushExam(exam, days, nodeName, nodes);
             }
         }
 
@@ -109,7 +109,7 @@ public class RemindJob {
             if (customNodes.contains((int) days)) {
                 String nodeName = days == 0L ? "DAY" : "D" + days;
                 log.info("命中自建提醒节点 userExam={} name={} node={}", ue.getId(), ue.getName(), nodeName);
-                pushCustom(ue, days, nodeName);
+                pushCustom(ue, days, nodeName, customNodes);
             }
         }
     }
@@ -156,15 +156,38 @@ public class RemindJob {
         return hit == null ? fallback : hit;
     }
 
-    private void pushExam(Exam exam, long days, String nodeName) {
+    /**
+     * 该提醒日还有多少个「从今天到截止日」的提醒点（含今天）。
+     * 推送额度优先保证靠近截止日的提醒：额度不足以覆盖后续所有提醒点时，
+     * 宁可今天不推，把额度留给更关键的日子（订 1 次只推截止当天，订 2 次推前一天+当天…）。
+     */
+    private int requiredQuota(Set<Integer> nodes, long days) {
+        int count = 0;
+        for (Integer n : nodes) {
+            if (n != null && n <= days) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void pushExam(Exam exam, long days, String nodeName, Set<Integer> nodes) {
         // 模板 ID 以后端 exam.template_id 为准，取不到才回落全局默认
         String tplId = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
                 ? exam.getTemplateId() : templateId;
+        int required = requiredQuota(nodes, days);
 
         for (Subscription sub : subscriptionMapper.selectList(
                 new QueryWrapper<Subscription>()
                         .eq("exam_id", exam.getId())
                         .gt("remain_times", 0))) {
+
+            if (sub.getRemainTimes() < required) {
+                // 额度不够覆盖到截止日的全部提醒点，留给更关键的日子
+                log.info("额度保留跳过 openid={} remain={} required={} node={}",
+                        sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                continue;
+            }
 
             Map<String, Object> data = new LinkedHashMap<>();
             // ⚠️ 这几个 key 必须与微信后台模板字段一一对应，否则报 47003
@@ -204,15 +227,22 @@ public class RemindJob {
      * 自建提醒推送。exam_id 用命名空间 id（UserExam.ID_BASE + user_exam.id），
      * 模板取用户自己那条（建库时已写入全局默认），跳回首页并定位高亮该节点。
      */
-    private void pushCustom(UserExam ue, long days, String nodeName) {
+    private void pushCustom(UserExam ue, long days, String nodeName, Set<Integer> nodes) {
         long publicId = UserExam.toPublicId(ue.getId());
         String tplId = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
                 ? ue.getTemplateId() : templateId;
+        int required = requiredQuota(nodes, days);
 
         for (Subscription sub : subscriptionMapper.selectList(
                 new QueryWrapper<Subscription>()
                         .eq("exam_id", publicId)
                         .gt("remain_times", 0))) {
+
+            if (sub.getRemainTimes() < required) {
+                log.info("额度保留跳过 openid={} remain={} required={} node={}",
+                        sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                continue;
+            }
 
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("thing1", Map.of("value", truncate(ue.getName(), 20)));

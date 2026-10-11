@@ -200,16 +200,17 @@ Page({
     const list = nodes
       .filter((n) => !n.passed && map[n.id] > 0)
       .map((n) => {
-        // 列出的时间点 = 未来真正会推送的时刻。剩余额度超过提醒点数时，多出的
-        // 部分永远消费不掉，所以只展示 min(剩余, 提醒点数) 条日期，
-        // 与实际可收到的推送严格一致（界面上不显示次数，只列时间）。
+        // 列出的时间点 = 未来真正会推送的时刻。推送额度优先保证靠近截止日的
+        // 提醒（订 1 次只推截止当天，订 2 次推前一天+当天…），所以展示的是
+        // min(剩余, 提醒点数) 个「离截止日最近」的时点，按离截止日由近到远排列。
         const futureDays = futurePushDays(n.nodeType, n.examDate);
         const remain = map[n.id];
         const effectiveTimes = Math.min(remain, futureDays.length);
         const examTs = parseDate(n.examDate);
         const pushTimes = futureDays
-          .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`)
-          .slice(0, effectiveTimes);
+          .slice(futureDays.length - effectiveTimes) // 取离截止日最近的 N 个
+          .reverse() // 展示顺序：截止日当天 → 前一天 → 前两天
+          .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`);
         if (pushTimes.length === 0) pushTimes.push('今日推送时间已过');
         return Object.assign({}, n, {
           remainTimes: remain,
@@ -530,8 +531,10 @@ Page({
     const remain = this.data.subscribedMap[id] || 0;
     const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
     let when = '';
-    if (node && futureDays[remain] !== undefined) {
-      const ts = parseDate(node.examDate) - futureDays[remain] * DAY_MS;
+    if (node && futureDays.length > remain) {
+      // 推送优先保证靠近截止日：新增这条授权把覆盖范围向截止日前多推一天
+      const d = futureDays[futureDays.length - 1 - remain];
+      const ts = parseDate(node.examDate) - d * DAY_MS;
       when = `，时间在 ${fmtDate(ts)} ${PUSH_TIME}`;
     }
     wx.showModal({
