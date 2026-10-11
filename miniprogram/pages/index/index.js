@@ -544,7 +544,7 @@ Page({
       tmplIds: [templateId],
       success: (res) => {
         if (res[templateId] !== 'accept') {
-          wx.showToast({ title: '未授权，无法收到提醒', icon: 'none' });
+          // 用户在授权弹窗点了「取消」：静默忽略，不弹提示
           return;
         }
         api.subscribe(id)
