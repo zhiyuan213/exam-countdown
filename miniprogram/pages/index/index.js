@@ -720,19 +720,8 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               map[id] = r.remainTimes;
+              // 成功后不弹 toast：消息清单和按钮状态会立刻更新，足够反馈了
               this.setData({ subscribedMap: map }, () => this.buildSubList());
-              // 提示有效次数（与消息清单口径一致），避免「剩余 6 次」这种兑现不了的数字
-              const node = (this._allNodes || []).find((n) => n.id === id);
-              const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
-              const effective = futureDays.length
-                ? Math.min(r.remainTimes, futureDays.length)
-                : 0;
-              wx.showToast({
-                title: effective > 0
-                  ? `已订阅，还可提醒 ${effective} 次`
-                  : '已订阅，今天的推送时间已过',
-                icon: 'none',
-              });
             } else {
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });
             }
