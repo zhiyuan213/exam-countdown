@@ -51,8 +51,8 @@ public class VirtualPayService {
     /** 查单接口 uri（参与 paySig 计算，不带 query string） */
     private static final String URI_QUERY_ORDER = "/xpay/query_order";
 
-    /** 查单接口返回 order_status = 1 视为已支付（以官方文档为准，如口径不同改这一处即可） */
-    private static final int QUERY_ORDER_STATUS_PAID = 1;
+    /** 查单核验不可用时的退避时长：容器内直连 api.weixin.qq.com 常因证书链校验失败而不可用 */
+    private static final long QUERY_BACKOFF_MS = 5 * 60_000L;
 
     private static final DateTimeFormatter ORDER_NO_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -99,6 +99,9 @@ public class VirtualPayService {
     private String goodsRaw;
 
     private volatile List<PayGoods> goodsCache;
+
+    /** 查单核验的退避截止时间戳（ms）：查单不可用时短期内不再重试，避免每条推送空等超时 */
+    private volatile long queryBackoffUntil = 0L;
 
     public VirtualPayService(PayOrderMapper payOrderMapper,
                              QuotaService quotaService,
@@ -407,13 +410,8 @@ public class VirtualPayService {
         for (PayOrder o : pending) {
             checked++;
             try {
-                JsonNode resp = queryOrder(o.getOutTradeNo(), o.getOpenid(), o.getEnv() == null ? 0 : o.getEnv());
-                if (resp == null) {
-                    continue;
-                }
-                int status = resp.path("order_status").asInt(
-                        resp.path("status").asInt(-1));
-                if (status == QUERY_ORDER_STATUS_PAID && deliverByQuery(o)) {
+                Boolean paid = queryPaid(o.getOutTradeNo(), o.getOpenid(), o.getEnv() == null ? 0 : o.getEnv());
+                if (Boolean.TRUE.equals(paid) && deliverByQuery(o)) {
                     delivered++;
                 }
             } catch (Exception e) {
@@ -447,34 +445,53 @@ public class VirtualPayService {
 
     /**
      * 查单核验：返回 Boolean.TRUE=已支付 / Boolean.FALSE=明确未支付 / null=无法确认。
-     * 只在拿到明确答复时才返回非 null，避免因接口口径变化误判而阻断正常发货。
+     * 只在拿到明确答复时才返回非 null，避免因接口口径变化误判而阻断正常发货；
+     * 查单一旦失败（如容器内 https 不通）进入 5 分钟退避，避免每条推送都空等超时。
      */
     private Boolean queryPaid(String outTradeNo, String openid, int orderEnv) {
+        if (System.currentTimeMillis() < queryBackoffUntil) {
+            return null;
+        }
         try {
             JsonNode r = queryOrder(outTradeNo, openid, orderEnv);
             if (r == null) {
+                backoff("无响应");
                 return null;
             }
             int errcode = r.path("errcode").asInt(0);
             if (errcode != 0) {
-                log.warn("查单核验返回 errcode={}: {}", errcode, r);
+                log.warn("查单失败 errcode={} errmsg={}", errcode, r.path("errmsg").asText(""));
+                backoff("错误码 " + errcode);
                 return null;
             }
-            JsonNode st = r.path("order_status");
+            JsonNode st = r.path("order").path("status");
             if (!st.isNumber()) {
-                st = r.path("status");
-            }
-            if (!st.isNumber()) {
+                backoff("返回体缺少 order.status");
                 return null;
             }
-            return st.asInt() == QUERY_ORDER_STATUS_PAID;
+            return isPaidStatus(st.asInt());
         } catch (Exception e) {
-            log.warn("查单核验异常: {}", e.toString());
+            log.warn("查单异常（容器内直连 https 可能不可用）: {}", e.toString());
+            backoff(e.getClass().getSimpleName());
             return null;
         }
     }
 
-    /** 调 /xpay/query_order。云调用优先，失败降级到 access_token 通道 */
+    /** order.status：2=已支付待发货 3=发货中 4=已发货（5~10 为退款/回收链路，不算正常支付） */
+    private static boolean isPaidStatus(int status) {
+        return status >= 2 && status <= 4;
+    }
+
+    private void backoff(String reason) {
+        queryBackoffUntil = System.currentTimeMillis() + QUERY_BACKOFF_MS;
+        log.warn("查单核验暂不可用（{}），{} 分钟内跳过查单核验", reason, QUERY_BACKOFF_MS / 60_000);
+    }
+
+    /**
+     * 调 /xpay/query_order 查单。
+     * ⚠️ 官方明确「本接口不支持云调用」，只能走 HTTPS；pay_sig 必须放在 query string（不是 header）。
+     * 容器内直连 https 可能因证书链校验失败而不可用，此时由调用方按 null（无法确认）处理。
+     */
     private JsonNode queryOrder(String outTradeNo, String openid, int orderEnv) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("openid", openid);
@@ -482,27 +499,11 @@ public class VirtualPayService {
         body.put("order_id", outTradeNo);
         String bodyJson = om.writeValueAsString(body);
         String paySig = PaySignUtil.hmacSha256Hex(currentAppKey(), URI_QUERY_ORDER + "&" + bodyJson);
-
-        if (cloudCallFirst) {
-            try {
-                JsonNode node = post("http://api.weixin.qq.com" + URI_QUERY_ORDER, bodyJson, paySig);
-                int errcode = node.path("errcode").asInt(-1);
-                if (errcode == 0) {
-                    return node;
-                }
-                log.warn("云调用查单返回 errcode={}: {}", errcode, node);
-            } catch (Exception e) {
-                log.warn("云调用查单异常，降级 access_token 通道: {}", e.toString());
-            }
-        }
-        return post("https://api.weixin.qq.com" + URI_QUERY_ORDER + "?access_token=" + tokenManager.get(), bodyJson, paySig);
-    }
-
-    private JsonNode post(String url, String bodyJson, String paySig) throws Exception {
+        String url = "https://api.weixin.qq.com" + URI_QUERY_ORDER
+                + "?access_token=" + tokenManager.get() + "&pay_sig=" + paySig;
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("pay_sig", paySig)
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(4))
                 .POST(HttpRequest.BodyPublishers.ofString(bodyJson))
                 .build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
