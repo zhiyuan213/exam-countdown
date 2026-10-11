@@ -258,8 +258,7 @@
   background: #f3f8fe;
 }
 
-/* 两按钮紧贴成一个整体：左按钮右圆角拉直、右按钮左圆角拉直 */
-.group-act:first-child {
+/* 两按钮紧贴成一个整体：左按钮右圆角拉直、右按钮左圆角拉直 */.group-act:first-child {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -366,4 +365,75 @@
 .sub-pill.is-subscribed {
   background: #e8eef6;
   color: #7a8ba6;
+}
+
+/* 批量订阅确认弹窗（自定义，保证清单逐行显示） */
+.bm-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bm-card {
+  width: 78%;
+  max-width: 560rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx 0;
+  box-sizing: border-box;
+}
+
+.bm-title {
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2d3d;
+}
+
+.bm-intro {
+  margin-top: 20rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #5a6b85;
+}
+
+.bm-lines {
+  margin-top: 16rpx;
+}
+
+.bm-line {
+  font-size: 26rpx;
+  line-height: 1.9;
+  color: #1f2d3d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bm-btns {
+  display: flex;
+  margin-top: 32rpx;
+  border-top: 1rpx solid #ebeef5;
+}
+
+.bm-btn {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  font-size: 30rpx;
+  color: #5a6b85;
+}
+
+.bm-btn--primary {
+  color: #4a90e2;
+  font-weight: 600;
+  border-left: 1rpx solid #ebeef5;
+}
+
+.bm-btn--hover {
+  background: #f5f7fa;
 }

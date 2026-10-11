@@ -340,19 +340,9 @@ Page({
       return;
     }
     // 系统授权弹窗只显示模板名（所有节点共用一个模板时长得一样），
-    // 所以在确认弹窗里把订阅顺序列出来，用户按序号对照即可知道当前授权的是谁
-    const list = targets
-      .slice(0, 6)
-      .map((n, idx) => `${idx + 1}. ${n.name}（${n.examDate}）`)
-      .join('\n');
-    const more = targets.length > 6 ? `\n…等共 ${targets.length} 个` : '';
-    wx.showModal({
-      title: '批量订阅',
-      content: `将依次授权以下 ${targets.length} 个节点的提醒，系统弹窗的弹出顺序与清单一致：\n${list}${more}`,
-      confirmText: '开始订阅',
-      cancelText: '取消',
-      success: (res) => {
-        if (!res.confirm) return;
+    // 所以在确认弹窗里把订阅顺序列出来，用户按序号对照即可知道当前授权的是谁。
+    // 用页面内自定义弹窗而不是 showModal：后者的 \n 在部分机型不换行。
+    this._bmConfirmCb = () => {
         const accepted = [];
         const step = (i) => {
           if (i >= targets.length) {
@@ -416,9 +406,31 @@ Page({
           authOnce();
         };
         step(0);
-      },
+    };
+    this.setData({
+      bmShow: true,
+      bmTitle: '批量订阅',
+      bmIntro: `将依次授权以下 ${targets.length} 个节点的提醒，系统弹窗的弹出顺序与清单一致：`,
+      bmLines: targets.map((n) => `${n.name}（${n.examDate}）`),
     });
   },
+
+  /** 自定义批量订阅弹窗：点「开始订阅」 */
+  onBmConfirm() {
+    this.setData({ bmShow: false });
+    const cb = this._bmConfirmCb;
+    this._bmConfirmCb = null;
+    if (cb) cb();
+  },
+
+  /** 自定义批量订阅弹窗：点「取消」或遮罩 */
+  onBmCancel() {
+    this.setData({ bmShow: false });
+    this._bmConfirmCb = null;
+  },
+
+  /** 阻止弹窗卡片内的点击冒泡到遮罩（wxml catchtap 引用） */
+  noop() {},
 
   /** 批量取消：把分组里已订阅的节点全部取消订阅（一次确认），未订阅的不动 */
   onBatchCancel(e) {

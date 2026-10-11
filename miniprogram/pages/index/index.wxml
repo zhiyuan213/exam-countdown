@@ -126,4 +126,19 @@
     <view wx:if="{{groups.length === 0}}" class="empty">暂无上架节点</view>
   </block>
 
+  <!-- 批量订阅确认弹窗（自定义，保证清单逐行显示；showModal 的 \n 部分机型不换行） -->
+  <view class="bm-mask" wx:if="{{bmShow}}" bindtap="onBmCancel">
+    <view class="bm-card" catchtap="noop">
+      <view class="bm-title">{{bmTitle}}</view>
+      <view class="bm-intro">{{bmIntro}}</view>
+      <view class="bm-lines">
+        <view class="bm-line" wx:for="{{bmLines}}" wx:key="index">{{index + 1}}. {{item}}</view>
+      </view>
+      <view class="bm-btns">
+        <view class="bm-btn" hover-class="bm-btn--hover" bindtap="onBmCancel">取消</view>
+        <view class="bm-btn bm-btn--primary" hover-class="bm-btn--hover" bindtap="onBmConfirm">开始订阅</view>
+      </view>
+    </view>
+  </view>
+
 </view>
