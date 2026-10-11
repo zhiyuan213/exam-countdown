@@ -16,12 +16,14 @@ Page({
   },
 
   onLoad() {
-    const today = new Date();
-    const max = new Date(today.getFullYear() + 5, today.getMonth(), today.getDate());
+    const now = new Date();
+    // 当天 08:00（推送时刻）已过的话，选今天则当天推送收不到，默认日期落到明天
+    const base = now.getHours() >= 8 ? new Date(now.getTime() + 24 * 3600 * 1000) : now;
+    const max = new Date(base.getFullYear() + 5, base.getMonth(), base.getDate());
     this.setData({
-      minDate: fmt(today),
+      minDate: fmt(now),
       maxDate: fmt(max),
-      date: fmt(today),
+      date: fmt(base),
     });
     this.loadQuota();
     this.loadTemplate();
