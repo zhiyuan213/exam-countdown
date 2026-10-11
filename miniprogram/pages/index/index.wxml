@@ -69,7 +69,7 @@
   <block wx:else>
     <view class="group group--subs">
       <view class="group-head">
-        <text class="group-title">消息清单</text>
+        <text class="group-title">提醒列表</text>
         <text class="group-hint">{{subList.length ? '共 ' + subList.length + ' 条' : ''}}</text>
       </view>
 
@@ -97,7 +97,7 @@
 
     <view class="group group--mine">
       <view class="group-head">
-        <text class="group-title">设置提醒</text>
+        <text class="group-title">定制提醒</text>
         <text class="group-hint">{{quotaText || '免费 2 个'}}</text>
         <text class="quota-buy" bindtap="onBuyQuota">额度包 ›</text>
       </view>

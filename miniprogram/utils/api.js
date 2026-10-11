@@ -123,7 +123,7 @@ function mockCall(path, method, data) {
           templateId: (mockData[0] && mockData[0].templateId) || '',
           nodeType: 'CUSTOM',
           groupCode: 'custom',
-          groupName: '设置提醒',
+          groupName: '定制提醒',
           sort: 0,
           isCustom: true,
         };
