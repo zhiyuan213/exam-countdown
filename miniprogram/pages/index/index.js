@@ -437,11 +437,14 @@ Page({
       items.push('再订 1 条提醒');
       actions.push(() => this.onResubscribeTap(id, name, templateId));
     }
-    items.push('取消订阅');
-    actions.push(() => this.doCancel(id, name));
     if (iscustom) {
+      // 自建节点不提供「取消订阅」，停提醒就走「删除提醒」整行删除
       items.push('删除提醒');
       actions.push(() => this.doDelete(id, name));
+    } else {
+      // 官方节点无法删除，只能取消订阅（节点保留，可重新订阅）
+      items.push('取消订阅');
+      actions.push(() => this.doCancel(id, name));
     }
     wx.showActionSheet({
       itemList: items,
