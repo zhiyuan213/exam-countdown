@@ -377,14 +377,36 @@ Page({
             return;
           }
           const node = targets[i];
-          wx.requestSubscribeMessage({
-            tmplIds: [node.templateId],
-            success: (r) => {
-              if (r[node.templateId] === 'accept') accepted.push(node);
-              step(i + 1);
-            },
-            fail: () => step(i + 1),
-          });
+          const authOnce = () => {
+            wx.requestSubscribeMessage({
+              tmplIds: [node.templateId],
+              success: (r) => {
+                if (r[node.templateId] === 'accept') accepted.push(node);
+                step(i + 1);
+              },
+              fail: (err) => {
+                console.error('batch subscribe auth failed:', node.name, err);
+                const msg = (err && err.errMsg) || '';
+                // 授权链断开（常见于开发者工具：非用户手势调用被拒）。
+                // 弹一个过渡弹窗，用户点「继续」的手势可以重新拉起授权。
+                if (/TAP|gesture/i.test(msg) && i + 1 <= targets.length) {
+                  wx.showModal({
+                    title: '继续授权',
+                    content: `还剩 ${targets.length - i} 个节点待授权，点「继续」弹出下一条授权。`,
+                    confirmText: '继续',
+                    cancelText: '跳过',
+                    success: (m) => {
+                      if (m.confirm) authOnce();
+                      else step(i + 1);
+                    },
+                  });
+                  return;
+                }
+                step(i + 1);
+              },
+            });
+          };
+          authOnce();
         };
         step(0);
       },
