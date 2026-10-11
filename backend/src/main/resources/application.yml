@@ -51,6 +51,10 @@ wx:
     env: ${XPAY_ENV:0}
     push-token: ${XPAY_PUSH_TOKEN:}
     goods: ${XPAY_GOODS:quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度}
+    # 发货兜底查单周期（应用内 @Scheduled）：默认每 10 分钟扫一次仍未发货的订单，主动查单补发。
+    # 微信发货推送最多重推 15 次，极端情况可能全丢，这个任务是第二道保险。
+    # 也支持云托管定时任务 POST /api/pay/recheck?token=<REMIND_JOB_TOKEN> 手动/外部触发。
+    recheck-cron: ${XPAY_RECHECK_CRON:0 */10 * * * ?}
 
 remind:
   cron: "0 0 8 * * ?"          # 每天 08:00 推送；调试时可临时改成 "*/30 * * * * ?"

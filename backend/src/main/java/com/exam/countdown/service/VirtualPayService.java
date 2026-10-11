@@ -488,9 +488,11 @@ public class VirtualPayService {
     }
 
     /**
-     * 调 /xpay/query_order 查单。
-     * ⚠️ 官方明确「本接口不支持云调用」，只能走 HTTPS；pay_sig 必须放在 query string（不是 header）。
-     * 容器内直连 https 可能因证书链校验失败而不可用，此时由调用方按 null（无法确认）处理。
+     * 调 /xpay/query_order 查单。两条通道依次尝试：
+     *   ① 云托管「开放接口服务」内网通道 http://api.weixin.qq.com（免鉴权、不走 TLS，
+     *      不受容器内证书链校验失败影响；需在云托管令牌权限里配置 /xpay/query_order）
+     *   ② 直连 https（access_token + pay_sig）——容器内通常因 PKIX 证书链不可用，仅作降级
+     * pay_sig 必须放在 query string（官方明确要求，不是 header）。
      */
     private JsonNode queryOrder(String outTradeNo, String openid, int orderEnv) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -499,8 +501,26 @@ public class VirtualPayService {
         body.put("order_id", outTradeNo);
         String bodyJson = om.writeValueAsString(body);
         String paySig = PaySignUtil.hmacSha256Hex(currentAppKey(), URI_QUERY_ORDER + "&" + bodyJson);
+
+        if (cloudCallFirst) {
+            try {
+                JsonNode node = postJson("http://api.weixin.qq.com" + URI_QUERY_ORDER + "?pay_sig=" + paySig, bodyJson);
+                // 成功响应不含 errcode（或为 0）；报错时才有非 0 errcode
+                if (node.path("errcode").asInt(0) == 0) {
+                    return node;
+                }
+                log.warn("云调用查单返回 errcode={} errmsg={}",
+                        node.path("errcode").asInt(), node.path("errmsg").asText(""));
+            } catch (Exception e) {
+                log.warn("云调用查单异常，降级直连 https: {}", e.toString());
+            }
+        }
         String url = "https://api.weixin.qq.com" + URI_QUERY_ORDER
                 + "?access_token=" + tokenManager.get() + "&pay_sig=" + paySig;
+        return postJson(url, bodyJson);
+    }
+
+    private JsonNode postJson(String url, String bodyJson) throws Exception {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(4))
