@@ -7,8 +7,8 @@
 """
 from PIL import Image, ImageDraw, ImageFont
 
-MONTH = "July"         # 头部月份文字
-DATE = "17"            # 日期数字
+MONTH = "June"         # 头部月份文字（高考 6 月）
+DATE = "7"             # 日期数字（高考 6 月 7 日）
 RED = (255, 59, 48)    # 头部红（iOS #FF3B30）
 DARK = (32, 32, 36)    # 日期深灰
 FONT = r"C:/Windows/Fonts/segoeuib.ttf"  # Segoe UI Bold：美式无衬线（近 Helvetica/SF）
