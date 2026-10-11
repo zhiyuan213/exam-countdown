@@ -195,8 +195,8 @@ Page({
       .filter((n) => !n.passed && map[n.id] > 0)
       .map((n) => {
         // 列出的时间点 = 未来真正会推送的时刻。剩余额度超过提醒点数时，多出的
-        // 部分永远消费不掉，所以展示「还可提醒 X 次」（X = min(剩余, 提醒点数)），
-        // 让数字和下面列出的日期条数严格一致。
+        // 部分永远消费不掉，所以只展示 min(剩余, 提醒点数) 条日期，
+        // 与实际可收到的推送严格一致（界面上不显示次数，只列时间）。
         const futureDays = futurePushDays(n.nodeType, n.examDate);
         const remain = map[n.id];
         const effectiveTimes = Math.min(remain, futureDays.length);
