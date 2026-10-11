@@ -62,6 +62,12 @@ l, t, r, b = d.textbbox((0, 0), DATE, font=df)
 y0 = header_h + (SIZE - header_h - (b - t)) / 2 - t - SIZE * 0.015
 d.text(((SIZE - (r - l)) / 2 - l, y0), DATE, font=df, fill=DARK + (255,))
 
+# 浅灰描边：白底在浅色背景上需要边界
+bw = max(2, int(SIZE * 0.012))
+ImageDraw.Draw(img).rounded_rectangle(
+    [bw // 2, bw // 2, SIZE - 1 - bw // 2, SIZE - 1 - bw // 2],
+    radius=radius - bw // 2, outline=(222, 222, 228, 255), width=bw)
+
 img = img.resize((384, 384), Image.LANCZOS)
 img.save(OUT)
 print("saved", OUT)

@@ -93,8 +93,8 @@
 }
 
 .hero-icon {
-  width: 52rpx;
-  height: 52rpx;
+  width: 64rpx;
+  height: 64rpx;
   margin-right: 20rpx;
   flex-shrink: 0;
 }
