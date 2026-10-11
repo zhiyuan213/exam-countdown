@@ -1,39 +1,66 @@
 # -*- coding: utf-8 -*-
 """生成首页/下拉刷新用的日历图标 calendar-red.png。
 
-风格（用户 2026-10-11 定稿）：整块红底 + 大号白色日期数字，无月份条、无白底。
-改日期或配色：改下面 DATE / RED 两个常量后重跑即可，勿直接手改 PNG。
+风格（用户 2026-10-11 定稿，参考 iOS 日历图标）：
+红头白字月份 + 白底深灰大号日期 + 顶部两个装订环。
+改月份/日期/配色：改下面 MONTH / DATE 常量后重跑即可，勿直接手改 PNG。
 """
 from PIL import Image, ImageDraw, ImageFont
 
-DATE = "17"            # 显示的日期数字
-RED_TOP = (255, 77, 66)    # 顶部略亮，做轻微纵向渐变
-RED_BOTTOM = (250, 50, 40) # 主体红（接近 iOS #FF3B30）
+MONTH = "July"         # 头部月份文字
+DATE = "17"            # 日期数字
+RED = (255, 59, 48)    # 头部红（iOS #FF3B30）
+DARK = (32, 32, 36)    # 日期深灰
 SIZE = 768             # 渲染尺寸，最后缩到 384 输出（抗锯齿）
 OUT = r"D:/code/exam-countdown/miniprogram/images/calendar-red.png"
 
 img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
-d = ImageDraw.Draw(img)
 
-# 圆角方块（iOS 图标约 22.4% 圆角），红底纵向微渐变
+# 卡片圆角遮罩（iOS 约 22.4% 圆角）
 radius = int(SIZE * 0.224)
+card_mask = Image.new("L", (SIZE, SIZE), 0)
+ImageDraw.Draw(card_mask).rounded_rectangle([0, 0, SIZE - 1, SIZE - 1], radius=radius, fill=255)
+
+# 白底（极浅的纵向渐变增加质感）
 body = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
 bd = ImageDraw.Draw(body)
 for y in range(SIZE):
     t = y / SIZE
-    c = tuple(int(RED_TOP[i] + (RED_BOTTOM[i] - RED_TOP[i]) * t) for i in range(3)) + (255,)
-    bd.line([(0, y), (SIZE, y)], fill=c)
-mask = Image.new("L", (SIZE, SIZE), 0)
-ImageDraw.Draw(mask).rounded_rectangle([0, 0, SIZE - 1, SIZE - 1], radius=radius, fill=255)
-img.paste(body, (0, 0), mask)
+    v = int(255 - 6 * t)
+    bd.line([(0, y), (SIZE, y)], fill=(v, v, v + 2 if v + 2 <= 255 else 255, 255))
+img.paste(body, (0, 0), card_mask)
 
-# 白色大号日期，居中（略上移，视觉居中）
-font = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", int(SIZE * 0.52))
-left, top, right, bottom = d.textbbox((0, 0), DATE, font=font)
-tw, th = right - left, bottom - top
-x = (SIZE - tw) / 2 - left
-y = (SIZE - th) / 2 - top - SIZE * 0.02
-d.text((x, y), DATE, font=font, fill=(255, 255, 255, 255))
+# 红色头部（约占 32% 高，通过卡片遮罩裁掉上缘外扩部分）
+header_h = int(SIZE * 0.32)
+header = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+ImageDraw.Draw(header).rectangle([0, 0, SIZE - 1, header_h], fill=RED + (255,))
+band_mask = Image.new("L", (SIZE, SIZE), 0)
+ImageDraw.Draw(band_mask).rectangle([0, 0, SIZE - 1, header_h], fill=255)
+band_mask = Image.composite(band_mask, Image.new("L", (SIZE, SIZE), 0), card_mask)
+img.paste(header, (0, 0), band_mask)
+
+d = ImageDraw.Draw(img)
+
+# 顶部两个装订环（浅灰小胶囊，压在卡片上缘）
+ring_w, ring_h = int(SIZE * 0.045), int(SIZE * 0.09)
+for cx in (int(SIZE * 0.28), int(SIZE * 0.72)):
+    x0, y0 = cx - ring_w // 2, -int(ring_h * 0.25)
+    d.rounded_rectangle([x0, y0, x0 + ring_w, y0 + ring_h],
+                        radius=ring_w // 2, fill=(210, 210, 215, 255))
+
+# 头部月份：白色粗体，按宽度自适应
+mf = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", int(header_h * 0.52))
+while d.textbbox((0, 0), MONTH, font=mf)[2] > SIZE * 0.62:
+    mf = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", mf.size - 8)
+l, t, r, b = d.textbbox((0, 0), MONTH, font=mf)
+d.text(((SIZE - (r - l)) / 2 - l, (header_h - (b - t)) / 2 - t), MONTH,
+       font=mf, fill=(255, 255, 255, 255))
+
+# 日期：深灰大号粗体，居中于白色区域（略上移做视觉居中）
+df = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", int(SIZE * 0.44))
+l, t, r, b = d.textbbox((0, 0), DATE, font=df)
+y0 = header_h + (SIZE - header_h - (b - t)) / 2 - t - SIZE * 0.015
+d.text(((SIZE - (r - l)) / 2 - l, y0), DATE, font=df, fill=DARK + (255,))
 
 img = img.resize((384, 384), Image.LANCZOS)
 img.save(OUT)
