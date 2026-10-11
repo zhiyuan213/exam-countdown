@@ -60,13 +60,10 @@ function futurePushDays(nodeType, examDate) {
   const list = (REMIND_NODES[nodeType] || [1, 0])
     .filter((d) => d <= days)
     .sort((a, b) => b - a); // 时间正序：D-7 早于 D-1 早于 D-0
-  // 当天（D-0）的推送在 08:00 发出后就不再是未来时点：菜单不再给「再订」，
-  // 清单也不再把它列为待推送时间
-  if (days === 0 && list.indexOf(0) !== -1) {
-    const now = new Date();
-    if (now.getHours() >= 8) {
-      return list.filter((d) => d !== 0);
-    }
+  // 推送时刻（08:00）已过就不再是未来时点：d == days 的时点推送日就是今天，
+  // 08:00 后从「未来推送」中剔除（无论它是 D-0 还是 D-1 等落在今天的点）
+  if (new Date().getHours() >= 8) {
+    return list.filter((d) => d < days);
   }
   return list;
 }
