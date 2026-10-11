@@ -428,12 +428,14 @@ Page({
    * 所以这一步的真实含义就是「多订一条提醒」，用户看不出这层意思，点后再补一句弹窗说明。
    */
   openActions(id, name, iscustom, templateId) {
-    // 节点已没有任何未来推送时点（如提醒点都在昨天以前）时，再订毫无意义，不出现该选项
+    // 剩余额度已覆盖全部未来推送时点（或没有未来时点）时，再订毫无意义，不出现该选项
     const node = (this._allNodes || []).find((n) => n.id === id);
-    const hasFuturePush = node ? futurePushDays(node.nodeType, node.examDate).length > 0 : true;
+    const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
+    const remain = this.data.subscribedMap[id] || 0;
+    const canResub = futureDays.length > 0 && remain < futureDays.length;
     const items = [];
     const actions = [];
-    if (hasFuturePush) {
+    if (canResub) {
       items.push('再订 1 条提醒');
       actions.push(() => this.onResubscribeTap(id, name, templateId));
     }
