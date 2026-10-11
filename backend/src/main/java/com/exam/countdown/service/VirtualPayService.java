@@ -127,11 +127,71 @@ public class VirtualPayService {
     public VirtualPayService(PayOrderMapper payOrderMapper,
                              PayRefundMapper payRefundMapper,
                              QuotaService quotaService,
-                             TokenManager tokenManager) {
+                             TokenManager tokenManager,
+                             com.exam.countdown.mapper.UserQuotaMapper userQuotaMapper) {
         this.payOrderMapper = payOrderMapper;
         this.payRefundMapper = payRefundMapper;
         this.quotaService = quotaService;
         this.tokenManager = tokenManager;
+        this.userQuotaMapper = userQuotaMapper;
+    }
+
+    private final com.exam.countdown.mapper.UserQuotaMapper userQuotaMapper;
+
+    // ==========================================================
+    // 管理端（token 保护）：对账与修数
+    // ==========================================================
+
+    /** 订单 + 用户额度总览，用于核对 openid 与当前 paid_quota */
+    public Map<String, Object> adminOverview() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        List<Map<String, Object>> orders = new ArrayList<>();
+        for (PayOrder po : payOrderMapper.selectList(
+                new QueryWrapper<PayOrder>().orderByDesc("created_at").last("LIMIT 50"))) {
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("outTradeNo", po.getOutTradeNo());
+            o.put("openid", po.getOpenid());
+            o.put("productId", po.getProductId());
+            o.put("quotaDelta", po.getQuotaDelta());
+            o.put("status", po.getStatus());
+            o.put("createdAt", String.valueOf(po.getCreatedAt()));
+            orders.add(o);
+        }
+        out.put("orders", orders);
+
+        List<Map<String, Object>> quotas = new ArrayList<>();
+        for (com.exam.countdown.entity.UserQuota q : userQuotaMapper.selectList(null)) {
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("openid", q.getOpenid());
+            o.put("freeQuota", q.getFreeQuota());
+            o.put("paidQuota", q.getPaidQuota());
+            quotas.add(o);
+        }
+        out.put("quotas", quotas);
+        return out;
+    }
+
+    /** 直接设置某用户的 paid_quota（修数用，幂等） */
+    public Map<String, Object> setPaidQuota(String openid, int quota) {
+        int rows = userQuotaMapper.update(null,
+                new UpdateWrapper<com.exam.countdown.entity.UserQuota>()
+                        .eq("openid", openid)
+                        .set("paid_quota", quota));
+        if (rows == 0) {
+            // 行不存在则补建（free_quota 走默认 2）
+            com.exam.countdown.entity.UserQuota q = new com.exam.countdown.entity.UserQuota();
+            q.setOpenid(openid);
+            q.setPaidQuota(quota);
+            try {
+                userQuotaMapper.insert(q);
+                rows = 1;
+            } catch (Exception e) {
+                log.warn("setPaidQuota 插入失败 openid={}: {}", openid, e.toString());
+            }
+        }
+        log.info("管理端修正 paid_quota openid={} quota={} rows={}", openid, quota, rows);
+        return Map.of("ok", rows > 0, "openid", openid, "paidQuota", quota);
     }
 
     // ==========================================================

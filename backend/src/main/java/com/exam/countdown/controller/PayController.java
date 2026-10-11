@@ -118,6 +118,29 @@ public class PayController {
         return payService.queryOrderDebug(no);
     }
 
+    /** 管理端：订单 + 用户额度总览（对账/修数用），需 jobToken */
+    @GetMapping("/admin/overview")
+    public Map<String, Object> adminOverview(@RequestParam(required = false) String token) {
+        if (!jobToken.equals(token)) {
+            return Map.of("ok", false, "msg", "token 无效");
+        }
+        return payService.adminOverview();
+    }
+
+    /** 管理端：直接设置某用户 paid_quota（修数用），需 jobToken */
+    @PostMapping("/admin/paid-quota")
+    public Map<String, Object> adminSetPaidQuota(@RequestParam(required = false) String token,
+                                                 @RequestParam(required = false) String openid,
+                                                 @RequestParam(required = false) Integer quota) {
+        if (!jobToken.equals(token)) {
+            return Map.of("ok", false, "msg", "token 无效");
+        }
+        if (openid == null || openid.isBlank() || quota == null || quota < 0) {
+            return Map.of("ok", false, "msg", "参数无效：需要 openid 和 quota(>=0)");
+        }
+        return payService.setPaidQuota(openid, quota);
+    }
+
     // ==========================================================
     // 发货推送
     // ==========================================================
