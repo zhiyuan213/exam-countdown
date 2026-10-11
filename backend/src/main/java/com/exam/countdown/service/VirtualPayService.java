@@ -54,6 +54,13 @@ public class VirtualPayService {
     /** 查单核验不可用时的退避时长：容器内直连 api.weixin.qq.com 常因证书链校验失败而不可用 */
     private static final long QUERY_BACKOFF_MS = 5 * 60_000L;
 
+    /**
+     * 查单接口「数据不存在」错误码。实测：已付款订单返回 errcode=0 + order.status，
+     * 从未付款（微信侧无订单记录）的订单返回 268490002「数据不存在」。
+     * 因此该码可安全判定为「明确未支付」，用于拒绝伪造推送。
+     */
+    private static final int QUERY_ERR_ORDER_NOT_FOUND = 268490002;
+
     private static final DateTimeFormatter ORDER_NO_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private final HttpClient http = HttpClient.newBuilder()
@@ -459,6 +466,12 @@ public class VirtualPayService {
                 return null;
             }
             int errcode = r.path("errcode").asInt(0);
+            if (errcode == QUERY_ERR_ORDER_NOT_FOUND) {
+                // 微信侧确认查无此单 => 从未支付。可安全判定为「明确未支付」，
+                // 用于拒绝伪造的无签名推送（下单接口会把 outTradeNo 返给客户端）。
+                log.info("查单确认未支付（微信侧无此订单）order={}", outTradeNo);
+                return Boolean.FALSE;
+            }
             if (errcode != 0) {
                 log.warn("查单返回业务错误 order={} errcode={} errmsg={}",
                         outTradeNo, errcode, r.path("errmsg").asText(""));
