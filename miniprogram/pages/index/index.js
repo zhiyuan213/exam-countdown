@@ -529,18 +529,19 @@ Page({
     const node = (this._allNodes || []).find((n) => n.id === id);
     const remain = this.data.subscribedMap[id] || 0;
     const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
-    let when = '';
+    let time = '';
     if (node && futureDays.length > remain) {
       // 推送优先保证靠近截止日：新增这条授权把覆盖范围向截止日前多推一天
       const d = futureDays[futureDays.length - 1 - remain];
-      const ts = parseDate(node.examDate) - d * DAY_MS;
-      when = `，时间在 ${fmtDate(ts)} ${PUSH_TIME}`;
+      time = `${fmtDate(parseDate(node.examDate) - d * DAY_MS)} ${PUSH_TIME}`;
     }
     wx.showModal({
       title: '再订 1 条提醒',
-      content: `微信要求每条提醒都单独授权一次。同意后，你会多收到 1 条「${name}」的提醒${when}。`,
-      confirmText: '去授权',
-      cancelText: '再想想',
+      content: time
+        ? `同意在 ${time} 增加「${name}」的提醒`
+        : `同意增加「${name}」的提醒`,
+      confirmText: '同意',
+      cancelText: '取消',
       success: (res) => {
         if (res.confirm) {
           this.doSubscribe(id, templateId);
