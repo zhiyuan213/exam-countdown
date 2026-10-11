@@ -87,7 +87,7 @@
             <text class="sub-deadline">截止 {{item.examDate}}</text>
           </view>
           <view class="sub-date">
-            <view>消息推送时间：</view>
+            <view>通知时间：</view>
             <view wx:for="{{item.pushTimes}}" wx:for-item="t" wx:key="*this">{{t}}</view>
           </view>
         </view>
