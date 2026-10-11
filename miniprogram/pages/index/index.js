@@ -572,7 +572,9 @@ Page({
       wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
       return;
     }
-    if (this.data.subscribedMap[id] > 0) {
+    // 与 pill「已订阅」的渲染口径保持一致（truthy 判断），避免数值/字符串类型
+    // 差异导致按钮显示已订阅、点击却走了重新授权分支
+    if (this.data.subscribedMap[id]) {
       this.openActions(id, name, iscustom, templateId);
       return;
     }
@@ -708,6 +710,18 @@ Page({
   },
 
   doSubscribe(id, templateId) {
+    // 防浪费兜底：节点已订阅且剩余次数已覆盖全部未来推送时点时，再授权也
+    // 不会多发推送，不拉起微信授权，直接转操作菜单（内部用节点名/类型，避免
+    // 依赖调用方传参不准）
+    const node = (this._allNodes || []).find((n) => n.id === id);
+    const remain = Number(this.data.subscribedMap[id]) || 0;
+    if (node && remain > 0) {
+      const futureDays = futurePushDays(node.nodeType, node.examDate);
+      if (futureDays.length > 0 && remain >= futureDays.length) {
+        this.openActions(id, node.name, !!node.isCustom, templateId);
+        return;
+      }
+    }
     wx.requestSubscribeMessage({
       tmplIds: [templateId],
       success: (res) => {
