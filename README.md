@@ -126,7 +126,7 @@ XPAY_APP_KEY=<现网 AppKey>            # 密钥，不要提交仓库
 XPAY_APP_KEY_SANDBOX=<沙箱 AppKey>     # 调试用
 XPAY_ENV=0                            # 0 现网 / 1 沙箱
 XPAY_PUSH_TOKEN=<mp 后台「消息推送」的 Token>
-XPAY_GOODS=quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度
+XPAY_GOODS=quota10:600:6:永久增加6个提醒额度;quota30:1200:18:永久增加18个提醒额度
 ```
 
 mp 后台还要做三件事：

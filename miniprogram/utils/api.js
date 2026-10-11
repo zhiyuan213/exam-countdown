@@ -45,8 +45,8 @@ try {
 
 // ---- mock 虚拟支付（二期）：已购额度 + 订单，持久化，方便验证购买后额度变化 ----
 const MOCK_GOODS = [
-  { goodsId: 'quota10', name: '+10 个提醒额度', priceFen: 600, quota: 10 },
-  { goodsId: 'quota30', name: '+30 个提醒额度', priceFen: 1200, quota: 30 },
+  { goodsId: 'quota10', name: '永久增加6个提醒额度', priceFen: 600, quota: 6 },
+  { goodsId: 'quota30', name: '永久增加18个提醒额度', priceFen: 1200, quota: 18 },
 ];
 const MOCK_PAID_KEY = 'mock_paid_quota';
 let mockPaidQuota = 0;

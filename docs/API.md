@@ -265,7 +265,7 @@ GET /api/quota
 | `XPAY_PUSH_TOKEN` | mp 后台「消息推送」配置的 Token，用于校验发货推送来源 |
 | `XPAY_GOODS` | `goodsId:priceFen:quota:name`，多项用 `;` 分隔 |
 
-默认额度包：`quota10:600:10:+10 个提醒额度;quota30:1200:30:+30 个提醒额度`（¥6 / ¥12）。
+默认额度包：`quota10:600:6:永久增加6个提醒额度;quota30:1200:18:永久增加18个提醒额度`（¥6 / ¥12）。
 
 ⚠️ `goodsId` 必须与后台「道具管理」里的**道具 ID 完全一致**，`priceFen` 必须与后台价格**完全一致**，否则拉起支付会被拒。
 ⚠️ iOS 端可能存在最低金额门槛，若 iOS 报错先把单价调到 ≥ 6 元（环境变量与后台价格要同步改）。
@@ -275,7 +275,7 @@ GET /api/quota
 
 ```
 GET /api/pay/goods
-→ { "ok": true, "enabled": true, "goods": [ { "goodsId": "quota10", "name": "+10 个提醒额度", "priceFen": 600, "quota": 10 } ] }
+→ { "ok": true, "enabled": true, "goods": [ { "goodsId": "quota10", "name": "永久增加6个提醒额度", "priceFen": 600, "quota": 6 } ] }
 ```
 
 ### 下单（返回拉起支付三件套）
