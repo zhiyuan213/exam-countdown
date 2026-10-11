@@ -72,16 +72,20 @@ CREATE TABLE IF NOT EXISTS user_exam (
 
 -- ============================================================
 -- 用户额度表。limit = free_quota + paid_quota 表示「可同时管理的未过期提醒数」。
--- free_quota 默认 3（免费额度）；paid_quota 由支付回调累加（二期接入虚拟支付）。
+-- free_quota 默认 2（免费额度，2026-10-11 由 3 下调为 2）；paid_quota 由支付回调累加。
 -- 额度按「当前有效提醒数」实时计算，删除或过期即释放，不做扣减累计，避免退款纠纷。
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_quota (
   openid      VARCHAR(64) PRIMARY KEY COMMENT '用户 openid',
-  free_quota  INT NOT NULL DEFAULT 3 COMMENT '免费额度（可同时管理的提醒数）',
+  free_quota  INT NOT NULL DEFAULT 2 COMMENT '免费额度（可同时管理的提醒数）',
   paid_quota  INT NOT NULL DEFAULT 0 COMMENT '已购额度（累加）',
   created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户提醒额度表';
+
+-- 额度配置对齐（幂等）：老库已有行 free_quota=3 统一降到 2。
+-- 注意：若日后手工把某个用户调回 3，重启后会被这条重置，调整请改用 paid_quota。
+UPDATE user_quota SET free_quota = 2 WHERE free_quota = 3;
 
 -- ============================================================
 -- 虚拟支付订单表（二期）。道具直购 short_series_goods 模式的订单流水。

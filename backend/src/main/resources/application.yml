@@ -61,5 +61,5 @@ remind:
   custom-nodes: ${REMIND_CUSTOM_NODES:1,0}        # 用户自建提醒：考前 1 天及当天（一次性订阅要逐次授权，点太多体验差）
   job-token: ${REMIND_JOB_TOKEN:change-me}  # 云托管定时任务调用 /api/job/remind 的口令
 
-# 用户自建提醒额度：free_quota 默认 3（建行时写入 user_quota 表，改这里不影响已存在的行）。
-# 二期接入虚拟支付后，支付回调会给 user_quota.paid_quota 累加额度。
+# 用户自建提醒额度：free_quota 默认 2（建行时写入 user_quota 表，老库已有行由 schema.sql 的幂等 UPDATE 对齐）。
+# 虚拟支付后，发货回调会给 user_quota.paid_quota 累加额度。

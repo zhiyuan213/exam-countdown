@@ -22,7 +22,7 @@ public class UserQuota {
     @TableId(type = IdType.INPUT)
     private String openid;
 
-    /** 免费额度，默认 3 */
+    /** 免费额度，默认 2 */
     private Integer freeQuota;
 
     /** 已购额度，累加 */

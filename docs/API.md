@@ -190,7 +190,7 @@ GET /api/job/remind?token=<REMIND_JOB_TOKEN>
 
 ### 额度规则
 
-- `limit = user_quota.free_quota(默认 3) + user_quota.paid_quota`
+- `limit = user_quota.free_quota(默认 2，2026-10-11 由 3 下调) + user_quota.paid_quota`
 - `used` = 该用户 `user_exam` 中 `status=1` 且 `exam_date >= 今天` 的条数
 - 删除提醒或提醒过期 → 自动释放，不做扣减累计（避免退款纠纷）
 - 二期接入虚拟支付后，支付回调调用 `QuotaService.addPaidQuota(openid, delta)`
@@ -228,7 +228,7 @@ DELETE /api/exams/custom/{id}
 
 ```
 GET /api/quota
-→ { "ok": true, "freeQuota": 3, "paidQuota": 0, "limit": 3, "used": 1, "remaining": 2 }
+→ { "ok": true, "freeQuota": 2, "paidQuota": 0, "limit": 2, "used": 1, "remaining": 1 }
 ```
 
 ### `/api/exams` 的变化

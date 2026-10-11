@@ -13,7 +13,7 @@ import java.util.Map;
 
 /**
  * 查询当前用户的提醒额度。
- * 免费额度默认 3，limit = freeQuota + paidQuota，按未过期提醒数实时计算占用。
+ * 免费额度默认 2，limit = freeQuota + paidQuota，按未过期提醒数实时计算占用。
  */
 @RestController
 @RequestMapping("/api/quota")

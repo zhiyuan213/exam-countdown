@@ -26,7 +26,7 @@ const mockData = require('./mock-data');
 
 // ---- mock 专用状态：自建提醒持久化到本地存储，重编译不丢，方便开发者工具里验证增删 ----
 const MOCK_ID_BASE = 1000000000;   // 与后端 UserExam.ID_BASE 保持一致
-const MOCK_FREE_QUOTA = 3;
+const MOCK_FREE_QUOTA = 2;
 const MOCK_STORE_KEY = 'mock_custom_list';
 let mockCustom = [];
 try {
