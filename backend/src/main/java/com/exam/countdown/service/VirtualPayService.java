@@ -445,8 +445,8 @@ public class VirtualPayService {
 
     /**
      * 查单核验：返回 Boolean.TRUE=已支付 / Boolean.FALSE=明确未支付 / null=无法确认。
-     * 只在拿到明确答复时才返回非 null，避免因接口口径变化误判而阻断正常发货；
-     * 查单一旦失败（如容器内 https 不通）进入 5 分钟退避，避免每条推送都空等超时。
+     * 只有「传输层失败 / 返回体不合预期」才进入 5 分钟退避 —— 业务错误码说明通道是通的，
+     * 退避反而会挡住其他订单的正常查单。
      */
     private Boolean queryPaid(String outTradeNo, String openid, int orderEnv) {
         if (System.currentTimeMillis() < queryBackoffUntil) {
@@ -460,8 +460,8 @@ public class VirtualPayService {
             }
             int errcode = r.path("errcode").asInt(0);
             if (errcode != 0) {
-                log.warn("查单失败 errcode={} errmsg={}", errcode, r.path("errmsg").asText(""));
-                backoff("错误码 " + errcode);
+                log.warn("查单返回业务错误 order={} errcode={} errmsg={}",
+                        outTradeNo, errcode, r.path("errmsg").asText(""));
                 return null;
             }
             JsonNode st = r.path("order").path("status");
@@ -471,10 +471,46 @@ public class VirtualPayService {
             }
             return isPaidStatus(st.asInt());
         } catch (Exception e) {
-            log.warn("查单异常（容器内直连 https 可能不可用）: {}", e.toString());
+            log.warn("查单异常（云调用与 https 均不可用）: {}", e.toString());
             backoff(e.getClass().getSimpleName());
             return null;
         }
+    }
+
+    /**
+     * 诊断用：把「发给微信的请求体」和「微信原样应答」都返回，便于核对云调用通道是否
+     * 转发了 POST 请求体、以及错误码的真实含义。仅在带正确 token 时由 PayController 暴露。
+     */
+    public Map<String, Object> queryOrderDebug(String outTradeNo) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        PayOrder order = payOrderMapper.selectById(outTradeNo);
+        int orderEnv = (order != null && order.getEnv() != null) ? order.getEnv() : env;
+        String openid = order != null ? order.getOpenid() : null;
+
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("openid", openid);
+        req.put("env", orderEnv);
+        req.put("order_id", outTradeNo);
+        out.put("localOrder", order == null ? null : Map.of(
+                "status", String.valueOf(order.getStatus()),
+                "openid", String.valueOf(order.getOpenid()),
+                "env", orderEnv,
+                "quotaDelta", String.valueOf(order.getQuotaDelta())));
+        out.put("requestBody", req);
+
+        if (openid == null) {
+            out.put("error", "本地无此订单，无法取得 openid");
+            return out;
+        }
+        try {
+            String bodyJson = om.writeValueAsString(req);
+            String paySig = PaySignUtil.hmacSha256Hex(currentAppKey(), URI_QUERY_ORDER + "&" + bodyJson);
+            JsonNode r = postJson("http://api.weixin.qq.com" + URI_QUERY_ORDER + "?pay_sig=" + paySig, bodyJson);
+            out.put("cloudCall", om.convertValue(r, Map.class));
+        } catch (Exception e) {
+            out.put("cloudCallError", e.toString());
+        }
+        return out;
     }
 
     /** order.status：2=已支付待发货 3=发货中 4=已发货（5~10 为退款/回收链路，不算正常支付） */
@@ -504,15 +540,12 @@ public class VirtualPayService {
 
         if (cloudCallFirst) {
             try {
-                JsonNode node = postJson("http://api.weixin.qq.com" + URI_QUERY_ORDER + "?pay_sig=" + paySig, bodyJson);
-                // 成功响应不含 errcode（或为 0）；报错时才有非 0 errcode
-                if (node.path("errcode").asInt(0) == 0) {
-                    return node;
-                }
-                log.warn("云调用查单返回 errcode={} errmsg={}",
-                        node.path("errcode").asInt(), node.path("errmsg").asText(""));
+                // 云调用通道已实测可用（能拿到微信的业务级应答），因此把应答原样返回，
+                // 不再因业务错误码降级到容器内必然失败的 https 通道（降级会丢掉真实错误码，
+                // 还会把「通道正常但订单不存在」误判成「通道不可用」）
+                return postJson("http://api.weixin.qq.com" + URI_QUERY_ORDER + "?pay_sig=" + paySig, bodyJson);
             } catch (Exception e) {
-                log.warn("云调用查单异常，降级直连 https: {}", e.toString());
+                log.warn("云调用查单请求失败，降级直连 https: {}", e.toString());
             }
         }
         String url = "https://api.weixin.qq.com" + URI_QUERY_ORDER

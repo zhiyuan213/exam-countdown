@@ -99,6 +99,22 @@ public class PayController {
         return payService.recheckPending();
     }
 
+    /**
+     * 诊断查单：原样返回「发给微信的请求体」和「微信的应答」，用于核对云调用通道
+     * 是否转发 POST 请求体、以及错误码的真实含义。需 jobToken。
+     */
+    @GetMapping("/query")
+    public Map<String, Object> queryOne(@RequestParam(required = false) String no,
+                                        @RequestParam(required = false) String token) {
+        if (!jobToken.equals(token)) {
+            return Map.of("ok", false, "msg", "token 无效");
+        }
+        if (no == null || no.isBlank()) {
+            return Map.of("ok", false, "msg", "缺少订单号参数 no");
+        }
+        return payService.queryOrderDebug(no);
+    }
+
     // ==========================================================
     // 发货推送
     // ==========================================================
