@@ -377,7 +377,7 @@ Page({
   /**
    * 点击节点整行（不再只点那个小按钮，按钮太小不好点）：
    * 已结束 → 提示无法订阅；
-   * 已订阅 → 操作菜单：再订一次 / 取消订阅 /（自建）删除提醒；
+   * 已订阅 → 操作菜单：再订 1 条提醒 / 取消订阅 /（自建）删除提醒；
    * 未订阅 → 直接走订阅授权。
    */
   onNodeTap(e) {
@@ -398,9 +398,14 @@ Page({
     this.doSubscribe(id, templateId);
   },
 
-  /** 已订阅节点的操作菜单 */
+  /**
+   * 已订阅节点的操作菜单。
+   *
+   * 文案避免「推送额度」这类内部说法：微信「一次性订阅」= 授权一次只能推一条，
+   * 所以这一步的真实含义就是「多订一条提醒」，用户看不出这层意思，点后再补一句弹窗说明。
+   */
   openActions(id, name, iscustom, templateId) {
-    const items = ['再订一次（+1 条推送额度）', '取消订阅'];
+    const items = ['再订 1 条提醒', '取消订阅'];
     if (iscustom) {
       items.push('删除提醒');
     }
@@ -408,7 +413,7 @@ Page({
       itemList: items,
       success: (res) => {
         if (res.tapIndex === 0) {
-          this.doSubscribe(id, templateId);
+          this.confirmResubscribe(id, name, templateId);
         } else if (res.tapIndex === 1) {
           this.doCancel(id, name);
         } else if (res.tapIndex === 2) {
@@ -442,6 +447,25 @@ Page({
             console.error('cancelSubscribe failed:', err);
             wx.showToast({ title: '取消失败，请重试', icon: 'none' });
           });
+      },
+    });
+  },
+
+  /**
+   * 再订一条提醒前的说明弹窗。
+   * 微信规定「授权一次只能推一条」，所以每多要一条提醒都得重新拉起一次授权；
+   * 用户看到系统授权弹窗时常常不知道自己在授权什么，这里先讲清楚再走授权。
+   */
+  confirmResubscribe(id, name, templateId) {
+    wx.showModal({
+      title: '再订 1 条提醒',
+      content: `微信要求每条提醒都单独授权一次。同意后，你会多收到 1 条「${name}」的提醒。`,
+      confirmText: '去授权',
+      cancelText: '再想想',
+      success: (res) => {
+        if (res.confirm) {
+          this.doSubscribe(id, templateId);
+        }
       },
     });
   },
