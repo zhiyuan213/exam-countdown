@@ -244,18 +244,30 @@
 .group-acts {
   display: flex;
   align-items: center;
-  gap: 20rpx;
   margin-left: auto;
   flex-shrink: 0;
 }
 
 .group-act {
   font-size: 22rpx;
+  line-height: 1;
   color: #4a90e2;
-  padding: 6rpx 16rpx;
+  padding: 8rpx 16rpx;
   border: 1rpx solid #b8d4f2;
   border-radius: 999rpx;
   background: #f3f8fe;
+}
+
+/* 两按钮紧贴成一个整体：左按钮右圆角拉直、右按钮左圆角拉直 */
+.group-act:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.group-act + .group-act {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1rpx; /* 抵消相邻边框，避免接缝处变粗 */
 }
 
 .group-act--danger {
