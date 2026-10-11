@@ -150,7 +150,8 @@
   margin-bottom: 16rpx;
   min-height: 148rpx;
   box-sizing: border-box;
-  box-shadow: 0 2rpx 8rpx rgba(74, 144, 226, 0.06);
+  border: 1rpx solid #e8eef7;
+  box-shadow: 0 6rpx 16rpx rgba(74, 144, 226, 0.12), 0 2rpx 4rpx rgba(74, 144, 226, 0.06);
 }
 
 .sub-row--passed {
@@ -286,7 +287,8 @@
   border-left: 6rpx solid #7fb2e8;
   min-height: 148rpx;
   box-sizing: border-box;
-  box-shadow: 0 2rpx 8rpx rgba(74, 144, 226, 0.06);
+  border: 1rpx solid #e8eef7;
+  box-shadow: 0 6rpx 16rpx rgba(74, 144, 226, 0.12), 0 2rpx 4rpx rgba(74, 144, 226, 0.06);
 }
 
 .node--passed {
