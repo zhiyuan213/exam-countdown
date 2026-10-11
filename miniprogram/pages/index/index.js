@@ -57,9 +57,18 @@ function daysLeft(dateStr) {
  */
 function futurePushDays(nodeType, examDate) {
   const days = daysLeft(examDate);
-  return (REMIND_NODES[nodeType] || [1, 0])
+  const list = (REMIND_NODES[nodeType] || [1, 0])
     .filter((d) => d <= days)
     .sort((a, b) => b - a); // 时间正序：D-7 早于 D-1 早于 D-0
+  // 当天（D-0）的推送在 08:00 发出后就不再是未来时点：菜单不再给「再订」，
+  // 清单也不再把它列为待推送时间
+  if (days === 0 && list.indexOf(0) !== -1) {
+    const now = new Date();
+    if (now.getHours() >= 8) {
+      return list.filter((d) => d !== 0);
+    }
+  }
+  return list;
 }
 
 Page({
@@ -204,7 +213,7 @@ Page({
         const pushTimes = futureDays
           .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`)
           .slice(0, effectiveTimes);
-        if (pushTimes.length === 0) pushTimes.push(`${n.examDate} ${PUSH_TIME}`);
+        if (pushTimes.length === 0) pushTimes.push('今日推送时间已过');
         return Object.assign({}, n, {
           remainTimes: remain,
           effectiveTimes,
@@ -419,20 +428,26 @@ Page({
    * 所以这一步的真实含义就是「多订一条提醒」，用户看不出这层意思，点后再补一句弹窗说明。
    */
   openActions(id, name, iscustom, templateId) {
-    const items = ['再订 1 条提醒', '取消订阅'];
+    // 节点已没有任何未来推送时点（如提醒点都在昨天以前）时，再订毫无意义，不出现该选项
+    const node = (this._allNodes || []).find((n) => n.id === id);
+    const hasFuturePush = node ? futurePushDays(node.nodeType, node.examDate).length > 0 : true;
+    const items = [];
+    const actions = [];
+    if (hasFuturePush) {
+      items.push('再订 1 条提醒');
+      actions.push(() => this.onResubscribeTap(id, name, templateId));
+    }
+    items.push('取消订阅');
+    actions.push(() => this.doCancel(id, name));
     if (iscustom) {
       items.push('删除提醒');
+      actions.push(() => this.doDelete(id, name));
     }
     wx.showActionSheet({
       itemList: items,
       success: (res) => {
-        if (res.tapIndex === 0) {
-          this.onResubscribeTap(id, name, templateId);
-        } else if (res.tapIndex === 1) {
-          this.doCancel(id, name);
-        } else if (res.tapIndex === 2) {
-          this.doDelete(id, name);
-        }
+        const fn = actions[res.tapIndex];
+        if (fn) fn();
       },
     });
   },
@@ -478,7 +493,17 @@ Page({
     const node = (this._allNodes || []).find((n) => n.id === id);
     const remain = this.data.subscribedMap[id] || 0;
     const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
-    if (futureDays.length > 0 && remain >= futureDays.length) {
+    if (futureDays.length === 0) {
+      // 没有未来推送时点了（提醒点全部过去），再订的授权永远消费不掉
+      wx.showModal({
+        title: '没有可再订的提醒',
+        content: `「${name}」的提醒时点都已过去，再订也不会再收到提醒。`,
+        showCancel: false,
+        confirmText: '知道了',
+      });
+      return;
+    }
+    if (remain >= futureDays.length) {
       const examTs = parseDate(node.examDate);
       const dates = futureDays.map((d) => fmtDate(examTs - d * DAY_MS)).join('、');
       wx.showModal({
@@ -530,8 +555,13 @@ Page({
               const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
               const effective = futureDays.length
                 ? Math.min(r.remainTimes, futureDays.length)
-                : r.remainTimes;
-              wx.showToast({ title: `已订阅，还可提醒 ${effective} 次`, icon: 'none' });
+                : 0;
+              wx.showToast({
+                title: effective > 0
+                  ? `已订阅，还可提醒 ${effective} 次`
+                  : '已订阅，今天的推送时间已过',
+                icon: 'none',
+              });
             } else {
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });
             }
