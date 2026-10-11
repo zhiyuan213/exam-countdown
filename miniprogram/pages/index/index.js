@@ -387,15 +387,15 @@ Page({
                 // 授权链断开（常见于开发者工具：非用户手势调用被拒）。
                 // 弹一个过渡弹窗，用户点「继续」的手势可以重新拉起授权。
                 if (/TAP|gesture/i.test(msg) && i + 1 <= targets.length) {
-                  wx.showModal({
-                    title: '继续授权',
-                    content: `下一条是「${node.name}」（${node.examDate}），点「继续」弹出它的授权。`,
-                    confirmText: '继续',
-                    cancelText: '跳过',
-                    success: (m) => {
-                      if (m.confirm) authOnce();
-                      else step(i + 1);
-                    },
+                  this._bmConfirmCb = () => authOnce();
+                  this._bmCancelCb = () => step(i + 1);
+                  this.setData({
+                    bmShow: true,
+                    bmTitle: '继续授权',
+                    bmIntro: `下一条是「${node.name}」（${node.examDate}），点「继续」弹出它的授权。`,
+                    bmLines: [],
+                    bmCancelText: '跳过',
+                    bmConfirmText: '继续',
                   });
                   return;
                 }
@@ -412,6 +412,8 @@ Page({
       bmTitle: '批量订阅',
       bmIntro: `将依次授权以下 ${targets.length} 个节点的提醒，系统弹窗的弹出顺序与清单一致：`,
       bmLines: targets.map((n) => `${n.name}（${n.examDate}）`),
+      bmCancelText: '取消',
+      bmConfirmText: '开始订阅',
     });
   },
 
@@ -427,6 +429,9 @@ Page({
   onBmCancel() {
     this.setData({ bmShow: false });
     this._bmConfirmCb = null;
+    const cb = this._bmCancelCb;
+    this._bmCancelCb = null;
+    if (cb) cb();
   },
 
   /** 阻止弹窗卡片内的点击冒泡到遮罩（wxml catchtap 引用） */

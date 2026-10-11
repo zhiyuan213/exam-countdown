@@ -135,8 +135,8 @@
         <view class="bm-line" wx:for="{{bmLines}}" wx:key="index">{{index + 1}}. {{item}}</view>
       </view>
       <view class="bm-btns">
-        <view class="bm-btn" hover-class="bm-btn--hover" bindtap="onBmCancel">取消</view>
-        <view class="bm-btn bm-btn--primary" hover-class="bm-btn--hover" bindtap="onBmConfirm">开始订阅</view>
+        <view class="bm-btn" hover-class="bm-btn--hover" bindtap="onBmCancel">{{bmCancelText || '取消'}}</view>
+        <view class="bm-btn bm-btn--primary" hover-class="bm-btn--hover" bindtap="onBmConfirm">{{bmConfirmText || '确定'}}</view>
       </view>
     </view>
   </view>
