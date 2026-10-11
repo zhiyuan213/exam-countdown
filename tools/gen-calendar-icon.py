@@ -11,6 +11,7 @@ MONTH = "July"         # 头部月份文字
 DATE = "17"            # 日期数字
 RED = (255, 59, 48)    # 头部红（iOS #FF3B30）
 DARK = (32, 32, 36)    # 日期深灰
+FONT = r"C:/Windows/Fonts/segoeuib.ttf"  # Segoe UI Bold：美式无衬线（近 Helvetica/SF）
 SIZE = 768             # 渲染尺寸，最后缩到 384 输出（抗锯齿）
 OUT = r"D:/code/exam-countdown/miniprogram/images/calendar-red.png"
 
@@ -30,8 +31,8 @@ for y in range(SIZE):
     bd.line([(0, y), (SIZE, y)], fill=(v, v, v + 2 if v + 2 <= 255 else 255, 255))
 img.paste(body, (0, 0), card_mask)
 
-# 红色头部（约占 32% 高，通过卡片遮罩裁掉上缘外扩部分）
-header_h = int(SIZE * 0.32)
+# 红色头部（约占 36% 高，通过卡片遮罩裁掉上缘外扩部分）
+header_h = int(SIZE * 0.36)
 header = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
 ImageDraw.Draw(header).rectangle([0, 0, SIZE - 1, header_h], fill=RED + (255,))
 band_mask = Image.new("L", (SIZE, SIZE), 0)
@@ -49,15 +50,15 @@ for cx in (int(SIZE * 0.28), int(SIZE * 0.72)):
                         radius=ring_w // 2, fill=(210, 210, 215, 255))
 
 # 头部月份：白色粗体，按宽度自适应
-mf = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", int(header_h * 0.52))
-while d.textbbox((0, 0), MONTH, font=mf)[2] > SIZE * 0.62:
-    mf = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", mf.size - 8)
+mf = ImageFont.truetype(FONT, int(header_h * 0.62))
+while d.textbbox((0, 0), MONTH, font=mf)[2] > SIZE * 0.66:
+    mf = ImageFont.truetype(FONT, mf.size - 8)
 l, t, r, b = d.textbbox((0, 0), MONTH, font=mf)
 d.text(((SIZE - (r - l)) / 2 - l, (header_h - (b - t)) / 2 - t), MONTH,
        font=mf, fill=(255, 255, 255, 255))
 
 # 日期：深灰大号粗体，居中于白色区域（略上移做视觉居中）
-df = ImageFont.truetype(r"C:/Windows/Fonts/arialbd.ttf", int(SIZE * 0.44))
+df = ImageFont.truetype(FONT, int(SIZE * 0.42))
 l, t, r, b = d.textbbox((0, 0), DATE, font=df)
 y0 = header_h + (SIZE - header_h - (b - t)) / 2 - t - SIZE * 0.015
 d.text(((SIZE - (r - l)) / 2 - l, y0), DATE, font=df, fill=DARK + (255,))
