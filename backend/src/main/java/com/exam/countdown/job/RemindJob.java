@@ -83,18 +83,30 @@ public class RemindJob {
     @Scheduled(cron = "${remind.cron}", zone = "Asia/Shanghai")
     public void run() {
         LocalDate today = LocalDate.now();
+        // 统计口径：扫描多少节点、命中多少、实际成功/失败多少，出问题先看这行汇总
+        int examScanned = 0, examHit = 0, customScanned = 0, customHit = 0;
+        int pushed = 0, failed = 0, skipped = 0;
+        long startAt = System.currentTimeMillis();
+        log.info("===== 提醒任务开始 today={} 官方提醒点={} 自建提醒点={} =====",
+                today, nodesByTypeConfig, customNodesConfig);
 
         // ---------- 官方节点：按节点类型取提醒点 ----------
-        Set<Integer> fallbackNodes = parseNodes(nodesConfig, "30,7,1,0");
+        Set<Integer> fallbackNodes = parseNodes(nodesConfig, "2,1,0");
         Map<String, Set<Integer>> nodesByType = parseNodesByType(nodesByTypeConfig);
 
         for (Exam exam : examMapper.selectList(new QueryWrapper<Exam>().eq("status", 1))) {
+            examScanned++;
             long days = ChronoUnit.DAYS.between(today, exam.getExamDate());
             Set<Integer> nodes = resolveNodes(nodesByType, exam.getNodeType(), fallbackNodes);
             if (nodes.contains((int) days)) {
+                examHit++;
                 String nodeName = days == 0L ? "DAY" : "D" + days;
-                log.info("命中提醒节点 exam={} type={} node={}", exam.getName(), exam.getNodeType(), nodeName);
-                pushExam(exam, days, nodeName, nodes);
+                log.info("命中提醒节点 exam={}(id={}) type={} date={} node={} 提醒点={}",
+                        exam.getName(), exam.getId(), exam.getNodeType(), exam.getExamDate(), nodeName, nodes);
+                int[] r = pushExam(exam, days, nodeName, nodes);
+                pushed += r[0];
+                failed += r[1];
+                skipped += r[2];
             }
         }
 
@@ -103,13 +115,23 @@ public class RemindJob {
         for (UserExam ue : userExamMapper.selectList(new QueryWrapper<UserExam>()
                 .eq("status", 1)
                 .ge("exam_date", today))) {
+            customScanned++;
             long days = ChronoUnit.DAYS.between(today, ue.getExamDate());
             if (customNodes.contains((int) days)) {
+                customHit++;
                 String nodeName = days == 0L ? "DAY" : "D" + days;
-                log.info("命中自建提醒节点 userExam={} name={} node={}", ue.getId(), ue.getName(), nodeName);
-                pushCustom(ue, days, nodeName, customNodes);
+                log.info("命中自建提醒节点 userExam={} name={} date={} node={}",
+                        ue.getId(), ue.getName(), ue.getExamDate(), nodeName);
+                int[] r = pushCustom(ue, days, nodeName, customNodes);
+                pushed += r[0];
+                failed += r[1];
+                skipped += r[2];
             }
         }
+
+        log.info("===== 提醒任务结束 官方扫描={} 命中={} 自建扫描={} 命中={} 成功={} 失败={} 额度保留跳过={} 耗时={}ms =====",
+                examScanned, examHit, customScanned, customHit, pushed, failed, skipped,
+                System.currentTimeMillis() - startAt);
     }
 
     private Set<Integer> parseNodes(String config, String fallback) {
@@ -136,7 +158,7 @@ public class RemindJob {
                 continue;
             }
             String type = part.substring(0, idx).trim().toUpperCase();
-            Set<Integer> nodes = parseNodes(part.substring(idx + 1).trim(), "1,0");
+            Set<Integer> nodes = parseNodes(part.substring(idx + 1).trim(), "2,1,0");
             if (!type.isEmpty() && !nodes.isEmpty()) {
                 map.put(type, nodes);
             }
@@ -169,11 +191,15 @@ public class RemindJob {
         return count;
     }
 
-    private void pushExam(Exam exam, long days, String nodeName, Set<Integer> nodes) {
+    /**
+     * 推送官方节点，返回 [成功数, 失败数, 额度保留跳过数]。
+     */
+    private int[] pushExam(Exam exam, long days, String nodeName, Set<Integer> nodes) {
         // 模板 ID 以后端 exam.template_id 为准，取不到才回落全局默认
         String tplId = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
                 ? exam.getTemplateId() : templateId;
         int required = requiredQuota(nodes, days);
+        int ok = 0, fail = 0, skip = 0;
 
         for (Subscription sub : subscriptionMapper.selectList(
                 new QueryWrapper<Subscription>()
@@ -182,8 +208,9 @@ public class RemindJob {
 
             if (sub.getRemainTimes() < required) {
                 // 额度不够覆盖到截止日的全部提醒点，留给更关键的日子
-                log.info("额度保留跳过 openid={} remain={} required={} node={}",
-                        sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                log.info("额度保留跳过 exam={} openid={} remain={} required={} node={}",
+                        exam.getName(), sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                skip++;
                 continue;
             }
 
@@ -208,28 +235,40 @@ public class RemindJob {
                 sub.setRemainTimes(sub.getRemainTimes() - 1);
                 subscriptionMapper.updateById(sub);
                 pl.setResult("OK");
+                ok++;
+                log.info("推送成功 exam={} openid={} node={} tplId={} 剩余额度={}",
+                        exam.getName(), sub.getOpenid(), nodeName, tplId, sub.getRemainTimes());
             } else if (errcode == 43101) { // 用户拒收：额度直接清零，别再生效
                 sub.setRemainTimes(0);
                 subscriptionMapper.updateById(sub);
                 pl.setResult("FAIL");
                 pl.setErrMsg("用户拒收 43101");
+                fail++;
+                log.warn("推送被拒收(43101) exam={} openid={} node={} 额度已清零",
+                        exam.getName(), sub.getOpenid(), nodeName);
             } else {
                 pl.setResult("FAIL");
                 pl.setErrMsg("errcode=" + errcode);
+                fail++;
+                log.warn("推送失败 exam={} openid={} node={} tplId={} errcode={}（额度不扣，可重试）",
+                        exam.getName(), sub.getOpenid(), nodeName, tplId, errcode);
             }
             pushLogMapper.insert(pl);
         }
+        return new int[]{ok, fail, skip};
     }
 
     /**
      * 自建提醒推送。exam_id 用命名空间 id（UserExam.ID_BASE + user_exam.id），
      * 模板取用户自己那条（建库时已写入全局默认），跳回首页并定位高亮该节点。
+     * 返回 [成功数, 失败数, 额度保留跳过数]。
      */
-    private void pushCustom(UserExam ue, long days, String nodeName, Set<Integer> nodes) {
+    private int[] pushCustom(UserExam ue, long days, String nodeName, Set<Integer> nodes) {
         long publicId = UserExam.toPublicId(ue.getId());
         String tplId = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
                 ? ue.getTemplateId() : templateId;
         int required = requiredQuota(nodes, days);
+        int ok = 0, fail = 0, skip = 0;
 
         for (Subscription sub : subscriptionMapper.selectList(
                 new QueryWrapper<Subscription>()
@@ -237,8 +276,9 @@ public class RemindJob {
                         .gt("remain_times", 0))) {
 
             if (sub.getRemainTimes() < required) {
-                log.info("额度保留跳过 openid={} remain={} required={} node={}",
-                        sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                log.info("额度保留跳过(自建) name={} openid={} remain={} required={} node={}",
+                        ue.getName(), sub.getOpenid(), sub.getRemainTimes(), required, nodeName);
+                skip++;
                 continue;
             }
 
@@ -262,17 +302,27 @@ public class RemindJob {
                 sub.setRemainTimes(sub.getRemainTimes() - 1);
                 subscriptionMapper.updateById(sub);
                 pl.setResult("OK");
+                ok++;
+                log.info("推送成功(自建) name={} openid={} node={} 剩余额度={}",
+                        ue.getName(), sub.getOpenid(), nodeName, sub.getRemainTimes());
             } else if (errcode == 43101) { // 用户拒收：额度清零
                 sub.setRemainTimes(0);
                 subscriptionMapper.updateById(sub);
                 pl.setResult("FAIL");
                 pl.setErrMsg("用户拒收 43101");
+                fail++;
+                log.warn("推送被拒收(43101,自建) name={} openid={} node={} 额度已清零",
+                        ue.getName(), sub.getOpenid(), nodeName);
             } else {
                 pl.setResult("FAIL");
                 pl.setErrMsg("errcode=" + errcode);
+                fail++;
+                log.warn("推送失败(自建) name={} openid={} node={} tplId={} errcode={}（额度不扣，可重试）",
+                        ue.getName(), sub.getOpenid(), nodeName, tplId, errcode);
             }
             pushLogMapper.insert(pl);
         }
+        return new int[]{ok, fail, skip};
     }
 
     private String truncate(String s, int max) {

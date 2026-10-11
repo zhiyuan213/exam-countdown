@@ -14,6 +14,15 @@ const NODE_LABEL = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * 统一日志前缀：真机调试/开发者工具里搜 "[exam]" 就能过滤出本小程序的流程日志。
+ * 排查思路：先看 [exam][tap] 知道点了谁，再看 [exam][auth] 授权结果，
+ * 最后看 [exam][api] 服务端登记结果 —— 三段对得上就是用户操作问题，对不上是代码/接口问题。
+ */
+function log(tag, ...args) {
+  console.log(`[exam][${tag}]`, ...args);
+}
+
 /** 各节点类型的提醒点（考前第 N 天），与后端 remind.nodes-by-type 默认值保持一致 */
 const REMIND_NODES = {
   SIGNUP: [2, 1, 0],
@@ -182,12 +191,16 @@ Page({
   loadSubscriptions() {
     return api.fetchSubscriptions()
       .then((r) => {
-        if (!r || !r.ok) return;
+        if (!r || !r.ok) {
+          log('subs', '订阅列表接口返回异常', r);
+          return;
+        }
         const map = {};
         (r.items || []).forEach((it) => { map[it.examId] = it.remainTimes; });
+        log('subs', `已订阅 ${(r.items || []).length} 个节点`, JSON.stringify(map));
         this.setData({ subscribedMap: map }, () => this.buildSubList());
       })
-      .catch((err) => console.error('fetchSubscriptions failed:', err));
+      .catch((err) => console.error('[exam][subs] fetchSubscriptions 失败:', err));
   },
 
   /**
@@ -234,7 +247,7 @@ Page({
           });
         }
       })
-      .catch((err) => console.error('fetchQuota failed:', err));
+      .catch((err) => console.error('[exam][quota] fetchQuota 失败:', err));
   },
 
   /** 加提醒：额度用完时引导购买额度包，否则直接进添加页 */
@@ -299,16 +312,18 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               delete map[id];
+              log('delete', `删除自建提醒成功「${name}」id=${id}`);
               this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: '已删除', icon: 'success' });
               this.load();
               this.loadQuota();
             } else {
+              log('delete', `删除自建提醒被拒「${name}」id=${id} msg=${(r && r.msg) || ''}`);
               wx.showToast({ title: (r && r.msg) || '删除失败', icon: 'none' });
             }
           })
           .catch((err) => {
-            console.error('deleteCustom failed:', err);
+            console.error('[exam][delete] 删除自建提醒异常:', id, err);
             wx.showToast({ title: '删除失败，请重试', icon: 'none' });
           });
       },
@@ -332,10 +347,17 @@ Page({
     const code = e.currentTarget.dataset.code;
     const group = (this.data.groups || []).find((g) => g.groupCode === code);
     if (!group) return;
-    const targets = this._groupNodes(code).filter(
+    const all = this._groupNodes(code);
+    const targets = all.filter(
       (n) => !n.passed && n.templateId && !(this.data.subscribedMap[n.id] > 0)
     );
+    log('batch', `点批量订阅「${group.groupName}」：分组内 ${all.length} 个节点`,
+      `待订阅 ${targets.length}`,
+      `已结束 ${all.filter((n) => n.passed).length}`,
+      `已订阅 ${all.filter((n) => this.data.subscribedMap[n.id] > 0).length}`,
+      `缺模板 ${all.filter((n) => !n.passed && !n.templateId).length}`);
     if (targets.length === 0) {
+      log('batch', '→ 没有需要订阅的节点');
       wx.showToast({ title: '没有需要订阅的节点', icon: 'none' });
       return;
     }
@@ -344,12 +366,16 @@ Page({
     // 用页面内自定义弹窗而不是 showModal：后者的 \n 在部分机型不换行。
     this._bmConfirmCb = () => {
         const accepted = [];
+        log('batch', `开始批量订阅「${group.groupName}」共 ${targets.length} 个`,
+          targets.map((n) => n.name).join(' / '));
         const step = (i) => {
           if (i >= targets.length) {
             if (accepted.length === 0) {
+              log('batch', '全部授权未通过，结束');
               wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
               return;
             }
+            log('batch', `授权通过 ${accepted.length}/${targets.length}，开始登记额度`);
             wx.showLoading({ title: '订阅中…', mask: true });
             Promise.all(
               accepted.map((node) =>
@@ -366,8 +392,11 @@ Page({
                 if (results[idx]) {
                   map[node.id] = results[idx].remainTimes;
                   count++;
+                } else {
+                  log('batch', `登记失败：「${node.name}」id=${node.id}`);
                 }
               });
+              log('batch', `批量订阅完成：授权 ${accepted.length}，登记成功 ${count}`);
               this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: `已订阅 ${count} 个节点`, icon: 'none' });
             });
@@ -378,18 +407,24 @@ Page({
             wx.requestSubscribeMessage({
               tmplIds: [node.templateId],
               success: (r) => {
-                if (r[node.templateId] === 'accept') accepted.push(node);
+                const ok = r[node.templateId] === 'accept';
+                log('batch', `授权[${i + 1}/${targets.length}]「${node.name}」= ${r[node.templateId]}`);
+                if (ok) accepted.push(node);
                 step(i + 1);
               },
               fail: (err) => {
                 // 预期内的授权链断开（非用户手势触发被拒），降级为 warn 避免控制台红字刷屏
-                console.warn('batch subscribe auth skipped:', node.name, err && err.errMsg);
+                console.warn('[exam][batch] 授权链断开，弹继续授权:', node.name, err && err.errMsg);
                 const msg = (err && err.errMsg) || '';
                 // 授权链断开（常见于开发者工具：非用户手势调用被拒）。
                 // 弹一个过渡弹窗，用户点「继续」的手势可以重新拉起授权。
                 if (/TAP|gesture/i.test(msg) && i + 1 <= targets.length) {
+                  log('batch', `手势链断开，等待用户点「继续」授权「${node.name}」`);
                   this._bmConfirmCb = () => authOnce();
-                  this._bmCancelCb = () => step(i + 1);
+                  this._bmCancelCb = () => {
+                    log('batch', `用户跳过「${node.name}」`);
+                    step(i + 1);
+                  };
                   this.setData({
                     bmShow: true,
                     bmTitle: '继续授权',
@@ -446,7 +481,9 @@ Page({
     const targets = this._groupNodes(code).filter(
       (n) => !n.passed && this.data.subscribedMap[n.id] > 0
     );
+    log('batchCancel', `点批量取消「${group.groupName}」：已订阅 ${targets.length} 个`);
     if (targets.length === 0) {
+      log('batchCancel', '→ 该分组没有已订阅的节点');
       wx.showToast({ title: '该分组没有已订阅的节点', icon: 'none' });
       return;
     }
@@ -473,8 +510,11 @@ Page({
             if (id) {
               delete map[id];
               count++;
+            } else {
+              log('batchCancel', '取消失败（接口未成功返回）');
             }
           });
+          log('batchCancel', `批量取消完成：提交 ${targets.length}，成功 ${count}`);
           this.setData({ subscribedMap: map }, () => this.buildSubList());
           wx.showToast({ title: `已取消 ${count} 个节点`, icon: 'none' });
         });
@@ -489,6 +529,7 @@ Page({
         const built = this.buildGroups(list || []);
         // 供「消息清单」按 examId 回查节点信息（官方 + 自定义）
         this._allNodes = built.custom.concat(built.official.reduce((acc, g) => acc.concat(g.nodes), []));
+        log('load', `节点 ${(list || []).length} 个`, `自建 ${built.custom.length}`, `官方分组 ${built.official.length}`);
         this.setData({
           customNodes: built.custom,
           groups: built.official,
@@ -496,7 +537,7 @@ Page({
         }, () => this.buildSubList());
       })
       .catch((err) => {
-        console.error('fetchExams failed:', err);
+        console.error('[exam][load] fetchExams 失败:', err);
         this.setData({
           loading: false,
           errorMsg: '加载失败，下拉重试',
@@ -570,20 +611,27 @@ Page({
   onNodeTap(e) {
     const { id, name, iscustom, templateid: templateId } = e.currentTarget.dataset;
     const node = (this._allNodes || []).find((n) => n.id === id);
+    const remain = this.data.subscribedMap[id] || 0;
+    log('tap', `节点「${name}」`, `id=${id}`, `自建=${!!iscustom}`, `剩余=${remain}`,
+      `模板=${templateId ? '有' : '无'}`, `已结束=${!!(node && node.passed)}`);
     if (node && node.passed) {
+      log('tap', '→ 已结束，提示无法订阅');
       wx.showToast({ title: '该节点已结束，无法订阅', icon: 'none' });
       return;
     }
     if (!templateId) {
+      log('tap', '→ 缺少模板ID，中断');
       wx.showToast({ title: '缺少模板ID，请联系管理员', icon: 'none' });
       return;
     }
     // 与 pill「已订阅」的渲染口径保持一致（truthy 判断），避免数值/字符串类型
     // 差异导致按钮显示已订阅、点击却走了重新授权分支
     if (this.data.subscribedMap[id]) {
+      log('tap', '→ 已订阅，打开操作菜单');
       this.openActions(id, name, iscustom, templateId);
       return;
     }
+    log('tap', '→ 未订阅，直接拉起授权');
     this.doSubscribe(id, templateId);
   },
 
@@ -599,6 +647,8 @@ Page({
     const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
     const remain = this.data.subscribedMap[id] || 0;
     const canResub = futureDays.length > 0 && remain < futureDays.length;
+    log('menu', `打开操作菜单「${name}」`, `剩余=${remain}`, `未来时点=${futureDays.length}`,
+      `可再订=${canResub}`, `自建=${!!iscustom}`, `菜单=${[canResub ? '再订' : '', iscustom ? '删除提醒' : '取消订阅'].filter(Boolean).join('/')}`);
     const items = [];
     const actions = [];
     if (canResub) {
@@ -637,14 +687,16 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               delete map[id];
+              log('cancel', `取消订阅成功「${name}」id=${id} 服务端删除记录数=${r.removed}`);
               this.setData({ subscribedMap: map }, () => this.buildSubList());
               wx.showToast({ title: '已取消订阅', icon: 'success' });
             } else {
+              log('cancel', `取消订阅被拒「${name}」id=${id} msg=${(r && r.msg) || ''}`);
               wx.showToast({ title: (r && r.msg) || '取消失败，请重试', icon: 'none' });
             }
           })
           .catch((err) => {
-            console.error('cancelSubscribe failed:', err);
+            console.error('[exam][cancel] 取消订阅接口异常:', id, err);
             wx.showToast({ title: '取消失败，请重试', icon: 'none' });
           });
       },
@@ -662,6 +714,7 @@ Page({
     const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
     if (futureDays.length === 0) {
       // 没有未来推送时点了（提醒点全部过去），再订的授权永远消费不掉
+      log('resub', `「${name}」无未来提醒点，不拉起授权`);
       wx.showModal({
         title: '没有可再订的提醒',
         content: `「${name}」的提醒时点都已过去，再订也不会再收到提醒。`,
@@ -673,6 +726,7 @@ Page({
     if (remain >= futureDays.length) {
       const examTs = parseDate(node.examDate);
       const dates = futureDays.map((d) => fmtDate(examTs - d * DAY_MS)).join('、');
+      log('resub', `「${name}」剩余 ${remain} 已覆盖未来 ${futureDays.length} 个时点，不拉起授权`);
       wx.showModal({
         title: '提醒次数已足够',
         content: `「${name}」接下来最多还会提醒 ${futureDays.length} 次（${dates} 各一次），当前剩余次数已足够，再订也不会多收提醒。`,
@@ -724,14 +778,18 @@ Page({
     if (node && remain > 0) {
       const futureDays = futurePushDays(node.nodeType, node.examDate);
       if (futureDays.length > 0 && remain >= futureDays.length) {
+        log('sub', `「${node.name}」剩余 ${remain} 已覆盖未来 ${futureDays.length} 个时点，不拉授权，转操作菜单`);
         this.openActions(id, node.name, !!node.isCustom, templateId);
         return;
       }
     }
+    log('sub', `拉起授权「${node ? node.name : id}」templateId=${templateId}`);
     wx.requestSubscribeMessage({
       tmplIds: [templateId],
       success: (res) => {
-        if (res[templateId] !== 'accept') {
+        const result = res[templateId];
+        log('sub', `授权结果「${node ? node.name : id}」= ${result}`);
+        if (result !== 'accept') {
           // 用户在授权弹窗点了「取消」：静默忽略，不弹提示
           return;
         }
@@ -740,19 +798,21 @@ Page({
             if (r && r.ok) {
               const map = Object.assign({}, this.data.subscribedMap);
               map[id] = r.remainTimes;
+              log('sub', `订阅登记成功「${node ? node.name : id}」remainTimes=${r.remainTimes}`);
               // 成功后不弹 toast：消息清单和按钮状态会立刻更新，足够反馈了
               this.setData({ subscribedMap: map }, () => this.buildSubList());
             } else {
+              log('sub', `订阅登记被拒「${node ? node.name : id}」msg=${(r && r.msg) || ''}`);
               wx.showToast({ title: (r && r.msg) || '订阅失败', icon: 'none' });
             }
           })
           .catch((err) => {
-            console.error('subscribe failed:', err);
+            console.error('[exam][sub] 订阅接口异常:', id, err);
             wx.showToast({ title: '订阅失败，请重试', icon: 'none' });
           });
       },
       fail: (err) => {
-        console.error('requestSubscribeMessage failed:', err);
+        console.error('[exam][sub] 授权调用失败:', id, err);
         wx.showToast({ title: '订阅授权失败', icon: 'none' });
       },
     });

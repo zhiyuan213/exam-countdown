@@ -9,6 +9,7 @@ import com.exam.countdown.mapper.ExamMapper;
 import com.exam.countdown.mapper.SubscriptionMapper;
 import com.exam.countdown.mapper.UserExamMapper;
 import com.exam.countdown.support.OpenidSupport;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +28,7 @@ import java.util.LinkedHashMap;
  *   - 用户自建节点：examId = UserExam.ID_BASE + user_exam.id
  * subscription.exam_id 存的就是这个「对前端暴露的 id」，推送时按同一规则回查。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/subscribe")
 public class SubscribeController {
@@ -54,9 +56,11 @@ public class SubscribeController {
 
         String openid = OpenidSupport.resolve(fromOpenid, cloudOpenid, req == null ? null : req.getOpenid());
         if (openid == null) {
+            log.warn("订阅失败：openid 缺失 examId={}", req == null ? null : req.getExamId());
             return Map.of("ok", false, "msg", "openid 缺失，请重新进入小程序");
         }
         if (req == null || req.getExamId() == null) {
+            log.warn("订阅失败：缺少节点 id openid={}", openid);
             return Map.of("ok", false, "msg", "缺少节点 id");
         }
 
@@ -67,12 +71,16 @@ public class SubscribeController {
             Long localId = UserExam.toLocalId(req.getExamId());
             UserExam ue = localId == null ? null : userExamMapper.selectById(localId);
             if (ue == null || ue.getStatus() == null || ue.getStatus() != 1) {
+                log.warn("订阅失败：自建提醒不存在或已删除 openid={} examId={}", openid, req.getExamId());
                 return Map.of("ok", false, "msg", "提醒不存在或已删除");
             }
             if (!openid.equals(ue.getOpenid())) {
+                log.warn("订阅失败：越权 openid={} examId={} owner={}", openid, req.getExamId(), ue.getOpenid());
                 return Map.of("ok", false, "msg", "无权订阅他人的提醒");
             }
             if (ue.getExamDate() != null && ue.getExamDate().isBefore(today)) {
+                log.warn("订阅失败：自建提醒已结束 openid={} examId={} date={}",
+                        openid, req.getExamId(), ue.getExamDate());
                 return Map.of("ok", false, "msg", "该提醒已结束");
             }
             tpl = (ue.getTemplateId() != null && !ue.getTemplateId().isBlank())
@@ -80,9 +88,12 @@ public class SubscribeController {
         } else {
             Exam exam = examMapper.selectById(req.getExamId());
             if (exam == null) {
+                log.warn("订阅失败：考试不存在 openid={} examId={}", openid, req.getExamId());
                 return Map.of("ok", false, "msg", "考试不存在");
             }
             if (exam.getExamDate() != null && exam.getExamDate().isBefore(today)) {
+                log.warn("订阅失败：考试已结束 openid={} examId={} name={} date={}",
+                        openid, req.getExamId(), exam.getName(), exam.getExamDate());
                 return Map.of("ok", false, "msg", "该考试已结束");
             }
             tpl = (exam.getTemplateId() != null && !exam.getTemplateId().isBlank())
@@ -101,10 +112,13 @@ public class SubscribeController {
             sub.setTemplateId(tpl);
             sub.setRemainTimes(1);
             subscriptionMapper.insert(sub);
+            log.info("订阅登记(新建) openid={} examId={} tplId={} remain=1", openid, req.getExamId(), tpl);
         } else {
             sub.setTemplateId(tpl);
             sub.setRemainTimes(sub.getRemainTimes() + 1);
             subscriptionMapper.updateById(sub);
+            log.info("订阅登记(累加) openid={} examId={} tplId={} remain={}",
+                    openid, req.getExamId(), tpl, sub.getRemainTimes());
         }
         return Map.of("ok", true, "remainTimes", sub.getRemainTimes());
     }
@@ -121,9 +135,11 @@ public class SubscribeController {
 
         String openid = OpenidSupport.resolve(fromOpenid, cloudOpenid, req == null ? null : req.getOpenid());
         if (openid == null) {
+            log.warn("取消订阅失败：openid 缺失 examId={}", req == null ? null : req.getExamId());
             return Map.of("ok", false, "msg", "openid 缺失，请重新进入小程序");
         }
         if (req == null || req.getExamId() == null) {
+            log.warn("取消订阅失败：缺少节点 id openid={}", openid);
             return Map.of("ok", false, "msg", "缺少节点 id");
         }
 
@@ -132,6 +148,7 @@ public class SubscribeController {
                         .eq("openid", openid)
                         .eq("exam_id", req.getExamId()));
 
+        log.info("取消订阅 openid={} examId={} 删除记录数={}", openid, req.getExamId(), removed);
         return Map.of("ok", true, "removed", removed);
     }
 

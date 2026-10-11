@@ -15,6 +15,11 @@
 
 const api = require('./api');
 
+/** 统一日志前缀（真机调试里搜 [exam][buy] 过滤购买流程） */
+function log(tag, ...args) {
+  console.log(`[exam][buy][${tag}]`, ...args);
+}
+
 /** 分 -> 元（去掉末尾 .00） */
 function fmtYuan(fen) {
   return (Number(fen) / 100).toFixed(2).replace(/\.00$/, '');
@@ -28,8 +33,11 @@ function pickGoods() {
         throw new Error((res && res.msg) || '获取额度包失败');
       }
       if (!res.enabled || !res.goods || !res.goods.length) {
+        log('goods', '支付未开通或商品为空', res);
         throw new Error('支付功能尚未开通，敬请期待');
       }
+      log('goods', `可选额度包 ${res.goods.length} 个`,
+        res.goods.map((g) => `${g.goodsId}:${g.name}(${g.priceFen}分/${g.quota}个)`).join(' '));
       return res.goods;
     })
     .then((goods) => new Promise((resolve, reject) => {
@@ -88,17 +96,26 @@ function confirmDelivered(orderId, times) {
 /** 真实的支付 + 到账确认；返回 { ok, delivered } */
 function payReal(goods) {
   let orderId = '';
+  log('order', `下单 goodsId=${goods.goodsId} 价格=${goods.priceFen}分`);
   return loginCode()
     .then((code) => api.createPayOrder({ goodsId: goods.goodsId, code }))
     .then((res) => {
       if (!res || !res.ok) {
+        log('order', `下单失败 goodsId=${goods.goodsId}`, (res && res.msg) || res);
         throw new Error((res && res.msg) || '下单失败，请稍后重试');
       }
       orderId = res.orderId;
+      log('order', `下单成功 orderId=${orderId}，拉起收银台`);
       return requestPay(res);
     })
-    .then(() => confirmDelivered(orderId))
-    .then((delivered) => ({ ok: true, delivered }));
+    .then(() => {
+      log('pay', `收银台支付成功 orderId=${orderId}，开始确认到账`);
+      return confirmDelivered(orderId);
+    })
+    .then((delivered) => {
+      log('pay', `到账确认 orderId=${orderId} delivered=${delivered}`);
+      return { ok: true, delivered };
+    });
 }
 
 /** mock 模式：跳过微信支付，直接让后端（mock）确认到账，方便本地验证 UI 与额度 */
@@ -124,6 +141,7 @@ function buyQuota() {
   return pickGoods()
     .then((goods) => (api.IS_MOCK ? payMock(goods) : payReal(goods)))
     .then((r) => {
+      log('done', `购买结束 delivered=${r.delivered}`);
       wx.showToast({
         title: r.delivered ? '支付成功，额度已到账' : '支付成功，额度稍后到账',
         icon: 'none',
@@ -133,15 +151,17 @@ function buyQuota() {
     })
     .catch((err) => {
       if (err && err.cancelled) {
+        log('exit', '用户取消了额度包选择');
         return { ok: false, cancelled: true };
       }
       // 支付里用户点「取消」微信返回 errCode = -2
       if (err && (err.errCode === -2 || err.errno === -2)) {
+        log('exit', '用户在收银台取消支付');
         return { ok: false, cancelled: true };
       }
       const msg = (err && (err.msg || err.errMsg)) || '支付失败，请稍后重试';
       wx.showToast({ title: msg, icon: 'none', duration: 2000 });
-      console.error('[buy] 购买失败:', err);
+      console.error('[exam][buy] 购买失败:', err);
       return { ok: false };
     });
 }

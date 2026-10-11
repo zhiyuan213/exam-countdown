@@ -90,7 +90,7 @@ Page({
       // mock 模式：跳过真实订阅授权弹窗（开发者工具里 requestSubscribeMessage
       // 的 success/fail 回调经常不触发，会导致 create 不执行、额度不更新），
       // 直接创建节点，专注验证额度与列表逻辑。
-      console.log('[add] mock mode: skip subscribe dialog');
+      console.log('[exam][add] mock 模式：跳过订阅授权弹窗');
       this.create(false);
       return;
     }
@@ -101,7 +101,7 @@ Page({
       const guard = setTimeout(() => {
         if (!settled) {
           settled = true;
-          console.warn('requestSubscribeMessage timeout, create without auth');
+          console.warn('[exam][add] 授权 5s 无回调，按未授权继续创建');
           this.create(false);
         }
       }, 5000);
@@ -109,13 +109,14 @@ Page({
         if (settled) return;
         settled = true;
         clearTimeout(guard);
+        console.log(`[exam][add] 订阅授权结果=${authorized ? 'accept' : '拒绝/失败'}`);
         this.create(authorized);
       };
       wx.requestSubscribeMessage({
         tmplIds: [tplId],
         success: (res) => finish(res[tplId] === 'accept'),
         fail: (err) => {
-          console.warn('requestSubscribeMessage failed:', err);
+          console.warn('[exam][add] 授权调用失败:', err);
           finish(false);
         },
       });
@@ -127,14 +128,17 @@ Page({
   create(authorized) {
     this.setData({ submitting: true });
     const name = (this.data.name || '').trim();
+    console.log(`[exam][add] 创建提醒 name=${name} date=${this.data.date} 已授权=${authorized}`);
 
     api.createCustom({ name, examDate: this.data.date })
       .then((res) => {
         if (!res || !res.ok) {
           if (res && res.code === 'QUOTA_EXCEEDED') {
+            console.log('[exam][add] 额度不足，引导购买');
             this.promptBuy();
             return null;
           }
+          console.warn('[exam][add] 创建失败:', (res && res.msg) || res);
           wx.showModal({
             title: '添加失败',
             content: (res && res.msg) || '请稍后重试',
@@ -142,17 +146,24 @@ Page({
           });
           return null;
         }
+        console.log('[exam][add] 创建成功 id=' + res.item.id, '剩余额度=' + JSON.stringify(res.quota));
         this.setData({ quota: res.quota });
         if (authorized) {
           return api.subscribe(res.item.id)
-            .then(() => this.done('已添加，并已订阅提醒'))
-            .catch(() => this.done('已添加，订阅登记失败，可稍后在首页补订'));
+            .then(() => {
+              console.log('[exam][add] 订阅登记成功 id=' + res.item.id);
+              return this.done('已添加，并已订阅提醒');
+            })
+            .catch((err) => {
+              console.warn('[exam][add] 订阅登记失败 id=' + res.item.id, err);
+              return this.done('已添加，订阅登记失败，可稍后在首页补订');
+            });
         }
         this.done('已添加，未订阅推送');
         return null;
       })
       .catch((err) => {
-        console.error('createCustom failed:', err);
+        console.error('[exam][add] createCustom 异常:', err);
         wx.showToast({ title: '网络异常，请重试', icon: 'none' });
       })
       .then(() => this.setData({ submitting: false }));

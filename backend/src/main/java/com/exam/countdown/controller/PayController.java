@@ -83,7 +83,12 @@ public class PayController {
                 body == null ? null : str(body.get("openid")));
         String goodsId = body == null ? null : str(body.get("goodsId"));
         String code = body == null ? null : str(body.get("code"));
-        return payService.createOrder(openid, goodsId, code);
+        Map<String, Object> res = payService.createOrder(openid, goodsId, code);
+        // 下单是支付链路的起点：失败时这行能直接看出是 openid 缺失、商品不存在还是签名问题
+        log.info("下单结果 openid={} goodsId={} hasCode={} ok={} msg={}",
+                openid, goodsId, code != null && !code.isBlank(),
+                res.get("ok"), res.get("msg"));
+        return res;
     }
 
     @GetMapping("/order/{outTradeNo}")
