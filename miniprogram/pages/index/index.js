@@ -27,7 +27,7 @@ const REMIND_NODES = {
 };
 
 /** 推送时间点：后端 RemindJob 每天定时执行（默认 08:00） */
-const PUSH_TIME = '08:00';
+const PUSH_TIME = '8:00';
 
 /** 把 "YYYY-MM-DD" 解析成本地零点的时间戳，避免时区偏移 */
 function parseDate(s) {
