@@ -208,8 +208,7 @@ Page({
         const effectiveTimes = Math.min(remain, futureDays.length);
         const examTs = parseDate(n.examDate);
         const pushTimes = futureDays
-          .slice(futureDays.length - effectiveTimes) // 取离截止日最近的 N 个
-          .reverse() // 展示顺序：截止日当天 → 前一天 → 前两天
+          .slice(futureDays.length - effectiveTimes) // 取离截止日最近的 N 个（真正会推送的），本身就是时间正序
           .map((d) => `${fmtDate(examTs - d * DAY_MS)} ${PUSH_TIME}`);
         if (pushTimes.length === 0) pushTimes.push('今日推送时间已过');
         return Object.assign({}, n, {
