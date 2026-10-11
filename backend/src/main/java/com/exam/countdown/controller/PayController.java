@@ -34,8 +34,9 @@ import java.util.Map;
  *   POST /api/pay/notify         道具发货推送 xpay_goods_deliver_notify（幂等发货）
  *   POST /api/pay/recheck        兜底查单（需 token）
  *
- * 回调地址配置在 mp 后台：虚拟支付 → 基本配置 → 基础配置 → 发货推送配置，
- * 形如 https://<云托管公网域名>/api/pay/notify
+ * 推送接收方式（二选一，推荐前者）：
+ *   ① 微信云托管控制台 → 设置 → 全局设置 → 消息推送：绑定环境/服务，path=/api/pay/notify（内网直达，免签名）
+ *   ② mp 后台消息推送 URL：https://<正式域名>/api/pay/notify（云托管默认域名会被拒绝，需签名校验）
  */
 @RestController
 @RequestMapping("/api/pay")
@@ -123,13 +124,18 @@ public class PayController {
      */
     @PostMapping(value = "/notify", produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     public ResponseEntity<String> notify(@RequestBody(required = false) String raw,
+                                         @RequestHeader(value = "x-wx-sources", required = false) String wxSources,
                                          @RequestParam(required = false) String signature,
                                          @RequestParam(required = false) String timestamp,
                                          @RequestParam(required = false) String nonce) {
         boolean xml = raw != null && raw.trim().startsWith("<");
-        log.info("收到支付消息推送: {}", raw);
+        log.info("收到支付消息推送: {} (x-wx-sources={})", raw, wxSources);
 
-        if (pushToken != null && !pushToken.isBlank() && !PushSignUtil.check(pushToken, timestamp, nonce, signature)) {
+        // 云托管内网通道（消息推送走云托管）不带签名参数，以 x-wx-sources 头标识微信侧来源；
+        // 仅当走公网 URL 且配置了 pushToken 时才做签名校验
+        boolean viaWxInternal = wxSources != null && !wxSources.isBlank();
+        if (!viaWxInternal && pushToken != null && !pushToken.isBlank()
+                && !PushSignUtil.check(pushToken, timestamp, nonce, signature)) {
             log.warn("推送签名校验不通过，拒绝处理");
             return reply(xml, false, "signature check failed");
         }

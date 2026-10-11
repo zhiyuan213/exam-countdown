@@ -467,20 +467,37 @@ public class VirtualPayService {
 
     /** jscode2session：换 openid + session_key（用户态签名必需） */
     private Session code2session(String code) throws Exception {
-        String url = String.format(
-                "https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
+        String query = String.format(
+                "appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
                 appid, secret, code);
-        HttpResponse<String> resp = http.send(
-                HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build(),
-                HttpResponse.BodyHandlers.ofString());
-        JsonNode node = om.readTree(resp.body());
+        String body;
+        if (cloudCallFirst) {
+            // 云调用通道：容器内直连 https 会因证书链校验失败（PKIX path building failed），
+            // 平台要求走 http://api.weixin.qq.com 由云托管网关转发（与订阅消息推送同一条通道）
+            try {
+                body = get("http://api.weixin.qq.com/sns/jscode2session?" + query);
+            } catch (Exception e) {
+                log.warn("code2session 云调用通道异常，降级直连 https: {}", e.toString());
+                body = get("https://api.weixin.qq.com/sns/jscode2session?" + query);
+            }
+        } else {
+            body = get("https://api.weixin.qq.com/sns/jscode2session?" + query);
+        }
+        JsonNode node = om.readTree(body);
         if (!node.hasNonNull("session_key")) {
-            throw new IllegalStateException("code2session 未返回 session_key: " + resp.body());
+            throw new IllegalStateException("code2session 未返回 session_key: " + body);
         }
         Session s = new Session();
         s.openid = node.path("openid").asText(null);
         s.sessionKey = node.get("session_key").asText();
         return s;
+    }
+
+    private String get(String url) throws Exception {
+        HttpResponse<String> resp = http.send(
+                HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        return resp.body();
     }
 
     /** T + 时间戳 + 4 位随机，长度 21，满足「每个订单号只能使用一次」 */
