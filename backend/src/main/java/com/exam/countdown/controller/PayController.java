@@ -31,8 +31,11 @@ import java.util.Map;
  *   POST /api/pay/order          下单，返回 signData / paySig / signature
  *   GET  /api/pay/order/{no}     查本地订单状态（支付后确认）
  *   GET  /api/pay/notify         微信「消息推送」URL 有效性校验（原样回 echostr）
- *   POST /api/pay/notify         道具发货推送 xpay_goods_deliver_notify（幂等发货）
- *   POST /api/pay/recheck        兜底查单（需 token）
+ *   POST /api/pay/notify         推送入口，按 Event 分派：
+ *                                  xpay_goods_deliver_notify          道具发货（幂等发货）
+ *                                  xpay_refund_notify                  退款（置 REFUNDED + 回收额度）
+ *                                  xpay_subscribe_ios_refund_query_notify iOS 退款问询（3 秒内应答）
+ *   POST /api/pay/recheck        兜底查单（需 token）：补发未发货订单 + 回收已退款订单
  *
  * 推送接收方式（二选一，推荐前者）：
  *   ① 微信云托管控制台 → 设置 → 全局设置 → 消息推送：绑定环境/服务，path=/api/pay/notify（内网直达，免签名）
@@ -171,19 +174,61 @@ public class PayController {
         }
 
         String event = node.path("Event").asText("");
-        if (!"xpay_goods_deliver_notify".equals(event)) {
-            log.info("非道具发货事件（Event={}），直接确认", event);
-            return reply(xml, true, "success");
+
+        // ① 道具发货推送
+        if ("xpay_goods_deliver_notify".equals(event)) {
+            boolean ok;
+            try {
+                ok = payService.deliver(node, sigVerified);
+            } catch (Exception e) {
+                log.error("发货处理异常: {}", e.toString());
+                ok = false;
+            }
+            return reply(xml, ok, ok ? "success" : "deliver failed");
         }
 
-        boolean ok;
-        try {
-            ok = payService.deliver(node, sigVerified);
-        } catch (Exception e) {
-            log.error("发货处理异常: {}", e.toString());
-            ok = false;
+        // ② 退款通知：更新订单状态 + 回收额度（资损相关，必须处理）
+        if ("xpay_refund_notify".equals(event)) {
+            boolean ok;
+            try {
+                ok = payService.refund(node);
+            } catch (Exception e) {
+                log.error("退款处理异常: {}", e.toString());
+                ok = false;
+            }
+            return reply(xml, ok, ok ? "success" : "refund failed");
         }
-        return reply(xml, ok, ok ? "success" : "deliver failed");
+
+        // ③ iOS 退款问询：需在 3 秒内应答，且应答体额外带 IosRefundQueryResponse
+        if ("xpay_subscribe_ios_refund_query_notify".equals(event)) {
+            Map<String, Object> decision;
+            try {
+                decision = payService.decideIosRefundQuery(node);
+            } catch (Exception e) {
+                log.error("iOS 退款问询处理异常: {}", e.toString());
+                decision = Map.of("result_code", 1, "result_info", "拒绝退款",
+                        "evidence", "系统繁忙，暂时无法受理退款申请，请稍后重试。");
+            }
+            return iosRefundReply(decision);
+        }
+
+        log.info("非发货/退款事件（Event={}），直接确认", event);
+        return reply(xml, true, "success");
+    }
+
+    /**
+     * iOS 退款问询的专用应答：标准应答体外再带 IosRefundQueryResponse（官方要求）。
+     * 推送模式配置为 JSON，故固定用 JSON 应答。
+     */
+    private ResponseEntity<String> iosRefundReply(Map<String, Object> decision) {
+        String decisionJson;
+        try {
+            decisionJson = om.writeValueAsString(decision);
+        } catch (Exception e) {
+            decisionJson = "{\"result_code\":1,\"result_info\":\"拒绝退款\",\"evidence\":\"系统异常\"}";
+        }
+        String body = "{\"ErrCode\":0,\"ErrMsg\":\"success\",\"IosRefundQueryResponse\":" + decisionJson + "}";
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(body);
     }
 
     private static ResponseEntity<String> reply(boolean xml, boolean ok, String msg) {

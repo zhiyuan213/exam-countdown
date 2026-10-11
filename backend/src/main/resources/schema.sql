@@ -118,6 +118,31 @@ CREATE TABLE IF NOT EXISTS pay_order (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='虚拟支付订单表';
 
 -- ============================================================
+-- 虚拟支付退款记录表（二期）。
+-- 收到 xpay_refund_notify 时落一条，用于审计留痕（退款单号/金额/时间）。
+-- 为什么单独建表而不是给 pay_order 加列：schema.sql 每次启动都会执行，
+-- ALTER TABLE ADD COLUMN 不幂等会让服务启动失败；新建表用 IF NOT EXISTS 则安全。
+-- 与 pay_order 的关系：pay_order.status 置为 REFUNDED 表示「已退款并回收额度」，
+-- 本表是明细流水（wx_refund_id 唯一，用于幂等去重）。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pay_refund (
+  id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+  out_trade_no  VARCHAR(64)  NOT NULL COMMENT '业务订单号（对应 pay_order.out_trade_no）',
+  openid        VARCHAR(64)  DEFAULT NULL COMMENT '退款用户 openid',
+  wx_refund_id  VARCHAR(64)  DEFAULT NULL COMMENT '微信退款单号 WxRefundId',
+  mch_refund_id VARCHAR(64)  DEFAULT NULL COMMENT '商户退款单号 MchRefundId',
+  wx_order_id   VARCHAR(64)  DEFAULT NULL COMMENT '退款单对应的微信订单号 WxOrderId',
+  refund_fee    INT          NOT NULL DEFAULT 0 COMMENT '退款金额（分）',
+  ret_code      INT          DEFAULT NULL COMMENT '退款状态 0 成功 非 0 失败',
+  ret_msg       VARCHAR(255) DEFAULT NULL COMMENT '退款结果说明',
+  quota_reduced INT          NOT NULL DEFAULT 0 COMMENT '本次回收的额度数（未发货订单为 0）',
+  succ_at       DATETIME     DEFAULT NULL COMMENT '退款完成时间',
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_order (out_trade_no),
+  KEY idx_wx_refund (wx_refund_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='虚拟支付退款记录表';
+
+-- ============================================================
 -- 种子数据：考研的全部节点（新装库执行）
 -- ⚠️ 日期核对说明：
 --    报名/报名截止/准考证/初试 = 官方已公布口径，仍需上线前再核对一遍；

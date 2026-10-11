@@ -103,4 +103,23 @@ public class QuotaService {
         log.info("paid_quota 原子累加 openid={} delta={}", openid, delta);
         return view(openid);
     }
+
+    /**
+     * 退款后回收已购额度（二期退款回调调用）。
+     *
+     * 与 {@link #addPaidQuota} 对称，同样用 SQL 原子自减，并且用 GREATEST(..., 0) 兜底：
+     * 用户可能已经把这批额度用掉了一部分（额度是「可同时管理的提醒数」，用完的提醒不会消失），
+     * 回收时只保证 paid_quota 不为负 —— 已有的提醒不受影响，用户只是不能再新增。
+     */
+    public QuotaResp reducePaidQuota(String openid, int delta) {
+        if (delta <= 0) {
+            return view(openid);
+        }
+        ensure(openid);
+        quotaMapper.update(null, new UpdateWrapper<UserQuota>()
+                .eq("openid", openid)
+                .setSql("paid_quota = GREATEST(IFNULL(paid_quota, 0) - (" + delta + "), 0)"));
+        log.info("paid_quota 原子扣减 openid={} delta={}", openid, delta);
+        return view(openid);
+    }
 }
