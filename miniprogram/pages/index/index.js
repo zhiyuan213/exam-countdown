@@ -315,6 +315,126 @@ Page({
     });
   },
 
+  // ================= 分组批量订阅 / 批量取消 =================
+
+  _groupNodes(code) {
+    const group = (this.data.groups || []).find((g) => g.groupCode === code);
+    return (group && group.nodes) || [];
+  },
+
+  /**
+   * 批量订阅：把分组里「未过期、未订阅」的节点都订阅上，已订阅的不动。
+   * 微信一次性订阅必须逐条授权，所以会依次弹授权确认；若用户勾选
+   * 「总是保持以上选择，不再询问」，后续的授权会静默通过，不再弹窗。
+   * 先把所有授权弹完，再统一登记额度，避免网络请求打断授权链。
+   */
+  onBatchSubscribe(e) {
+    const code = e.currentTarget.dataset.code;
+    const group = (this.data.groups || []).find((g) => g.groupCode === code);
+    if (!group) return;
+    const targets = this._groupNodes(code).filter(
+      (n) => !n.passed && n.templateId && !(this.data.subscribedMap[n.id] > 0)
+    );
+    if (targets.length === 0) {
+      wx.showToast({ title: '没有需要订阅的节点', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '批量订阅',
+      content: `将订阅「${group.groupName}」下 ${targets.length} 个未过期节点，会依次弹出授权确认，请逐个允许。`,
+      confirmText: '开始订阅',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return;
+        const accepted = [];
+        const step = (i) => {
+          if (i >= targets.length) {
+            if (accepted.length === 0) {
+              wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
+              return;
+            }
+            wx.showLoading({ title: '订阅中…', mask: true });
+            Promise.all(
+              accepted.map((node) =>
+                api.subscribe(node.id)
+                  .then((r) => (r && r.ok ? r : null))
+                  .catch(() => null)
+              )
+            ).then((results) => {
+              wx.hideLoading();
+              const map = Object.assign({}, this.data.subscribedMap);
+              let count = 0;
+              // 按提交顺序回填（api.subscribe 返回里不一定带 examId）
+              accepted.forEach((node, idx) => {
+                if (results[idx]) {
+                  map[node.id] = results[idx].remainTimes;
+                  count++;
+                }
+              });
+              this.setData({ subscribedMap: map }, () => this.buildSubList());
+              wx.showToast({ title: `已订阅 ${count} 个节点`, icon: 'none' });
+            });
+            return;
+          }
+          const node = targets[i];
+          wx.requestSubscribeMessage({
+            tmplIds: [node.templateId],
+            success: (r) => {
+              if (r[node.templateId] === 'accept') accepted.push(node);
+              step(i + 1);
+            },
+            fail: () => step(i + 1),
+          });
+        };
+        step(0);
+      },
+    });
+  },
+
+  /** 批量取消：把分组里已订阅的节点全部取消订阅（一次确认），未订阅的不动 */
+  onBatchCancel(e) {
+    const code = e.currentTarget.dataset.code;
+    const group = (this.data.groups || []).find((g) => g.groupCode === code);
+    if (!group) return;
+    const targets = this._groupNodes(code).filter(
+      (n) => !n.passed && this.data.subscribedMap[n.id] > 0
+    );
+    if (targets.length === 0) {
+      wx.showToast({ title: '该分组没有已订阅的节点', icon: 'none' });
+      return;
+    }
+    wx.showModal({
+      title: '批量取消订阅',
+      content: `将取消「${group.groupName}」下 ${targets.length} 个已订阅节点的提醒，确定吗？`,
+      confirmText: '全部取消',
+      confirmColor: '#e64340',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return;
+        wx.showLoading({ title: '取消中…', mask: true });
+        Promise.all(
+          targets.map((node) =>
+            api.cancelSubscribe(node.id)
+              .then((r) => (r && r.ok ? node.id : null))
+              .catch(() => null)
+          )
+        ).then((ids) => {
+          wx.hideLoading();
+          const map = Object.assign({}, this.data.subscribedMap);
+          let count = 0;
+          ids.forEach((id) => {
+            if (id) {
+              delete map[id];
+              count++;
+            }
+          });
+          this.setData({ subscribedMap: map }, () => this.buildSubList());
+          wx.showToast({ title: `已取消 ${count} 个节点`, icon: 'none' });
+        });
+      },
+    });
+  },
+
   load() {
     this.setData({ loading: true, errorMsg: '' });
     return api.fetchExams()

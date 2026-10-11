@@ -240,6 +240,30 @@
   flex-shrink: 0;
 }
 
+/* 官方分组标题右侧的批量订阅 / 批量取消 */
+.group-acts {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.group-act {
+  font-size: 22rpx;
+  color: #4a90e2;
+  padding: 6rpx 16rpx;
+  border: 1rpx solid #b8d4f2;
+  border-radius: 999rpx;
+  background: #f3f8fe;
+}
+
+.group-act--danger {
+  color: #e64340;
+  border-color: #f2c1c0;
+  background: #fef4f4;
+}
+
 .node {
   display: flex;
   align-items: center;

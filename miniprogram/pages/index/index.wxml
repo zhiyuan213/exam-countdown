@@ -110,7 +110,13 @@
     </view>
 
     <view wx:for="{{groups}}" wx:key="groupCode" class="group">
-      <view class="group-title">{{item.groupName}}</view>
+      <view class="group-head">
+        <text class="group-title">{{item.groupName}}</text>
+        <view class="group-acts">
+          <text class="group-act" data-code="{{item.groupCode}}" catchtap="onBatchSubscribe">批量订阅</text>
+          <text class="group-act group-act--danger" data-code="{{item.groupCode}}" catchtap="onBatchCancel">批量取消</text>
+        </view>
+      </view>
 
       <block wx:for="{{item.nodes}}" wx:for-item="node" wx:key="id">
         <template is="nodeItem" data="{{node: node, highlightId: highlightId, subscribedMap: subscribedMap}}" />
