@@ -382,7 +382,8 @@ Page({
                 step(i + 1);
               },
               fail: (err) => {
-                console.error('batch subscribe auth failed:', node.name, err);
+                // 预期内的授权链断开（非用户手势触发被拒），降级为 warn 避免控制台红字刷屏
+                console.warn('batch subscribe auth skipped:', node.name, err && err.errMsg);
                 const msg = (err && err.errMsg) || '';
                 // 授权链断开（常见于开发者工具：非用户手势调用被拒）。
                 // 弹一个过渡弹窗，用户点「继续」的手势可以重新拉起授权。
