@@ -30,7 +30,7 @@
 
   <view class="quota">
     <block wx:if="{{quota}}">
-      <text wx:if="{{quota.remaining > 0}}">免费额度剩余 {{quota.remaining}} 个（已用 {{quota.used}}/{{quota.limit}}）</text>
+      <text wx:if="{{quota.remaining > 0}}">额度剩余 {{quota.remaining}} 个（已用 {{quota.used}}/{{quota.limit}}）</text>
       <text wx:else class="quota-warn">额度已用完（{{quota.used}}/{{quota.limit}}），请先回首页删除旧的提醒</text>
     </block>
     <text wx:else>额度查询中…</text>
