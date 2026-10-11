@@ -456,13 +456,9 @@ Page({
 
   /** 取消订阅：二次确认后删除该节点的推送额度（剩余授权一并丢弃，清单中移除，节点保留可重订） */
   doCancel(id, name) {
-    const remain = this.data.subscribedMap[id] || 0;
-    const tip = remain > 0
-      ? `取消后不再收到「${name}」的提醒，剩余的 ${remain} 次提醒额度也会一并清除（节点保留，可随时重新订阅）。确定吗？`
-      : `取消后不再收到「${name}」的提醒，确定吗？`;
     wx.showModal({
       title: '取消订阅',
-      content: tip,
+      content: `取消后不再收到「${name}」的提醒，确定吗？`,
       confirmText: '取消订阅',
       confirmColor: '#e64340',
       success: (res) => {
