@@ -522,12 +522,21 @@ Page({
   /**
    * 再订一条提醒前的说明弹窗。
    * 微信规定「授权一次只能推一条」，所以每多要一条提醒都得重新拉起一次授权；
-   * 用户看到系统授权弹窗时常常不知道自己在授权什么，这里先讲清楚再走授权。
+   * 用户看到系统授权弹窗时常常不知道自己在授权什么，这里先讲清楚再走授权，
+   * 并告诉他这条授权对应的具体推送时间（第 remain+1 个未来提醒点）。
    */
   confirmResubscribe(id, name, templateId) {
+    const node = (this._allNodes || []).find((n) => n.id === id);
+    const remain = this.data.subscribedMap[id] || 0;
+    const futureDays = node ? futurePushDays(node.nodeType, node.examDate) : [];
+    let when = '';
+    if (node && futureDays[remain] !== undefined) {
+      const ts = parseDate(node.examDate) - futureDays[remain] * DAY_MS;
+      when = `，时间在 ${fmtDate(ts)} ${PUSH_TIME}`;
+    }
     wx.showModal({
       title: '再订 1 条提醒',
-      content: `微信要求每条提醒都单独授权一次。同意后，你会多收到 1 条「${name}」的提醒。`,
+      content: `微信要求每条提醒都单独授权一次。同意后，你会多收到 1 条「${name}」的提醒${when}。`,
       confirmText: '去授权',
       cancelText: '再想想',
       success: (res) => {
