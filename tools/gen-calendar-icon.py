@@ -32,7 +32,7 @@ for y in range(SIZE):
 img.paste(body, (0, 0), card_mask)
 
 # 红色头部（约占 36% 高，通过卡片遮罩裁掉上缘外扩部分）
-header_h = int(SIZE * 0.36)
+header_h = int(SIZE * 0.40)
 header = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
 ImageDraw.Draw(header).rectangle([0, 0, SIZE - 1, header_h], fill=RED + (255,))
 band_mask = Image.new("L", (SIZE, SIZE), 0)
@@ -50,7 +50,7 @@ for cx in (int(SIZE * 0.28), int(SIZE * 0.72)):
                         radius=ring_w // 2, fill=(210, 210, 215, 255))
 
 # 头部月份：白色粗体，按宽度自适应
-mf = ImageFont.truetype(FONT, int(header_h * 0.62))
+mf = ImageFont.truetype(FONT, int(header_h * 0.66))
 while d.textbbox((0, 0), MONTH, font=mf)[2] > SIZE * 0.66:
     mf = ImageFont.truetype(FONT, mf.size - 8)
 l, t, r, b = d.textbbox((0, 0), MONTH, font=mf)
