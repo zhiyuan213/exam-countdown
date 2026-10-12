@@ -62,7 +62,6 @@
     </view>
     <button class="hero-share" open-type="share" wx:if="{{!singlePage}}" aria-label="分享给好友">
       <image class="hero-share-icon" src="/images/share-icon.png" mode="aspectFit" />
-      <text class="hero-share-text">分享</text>
     </button>
   </view>
 
