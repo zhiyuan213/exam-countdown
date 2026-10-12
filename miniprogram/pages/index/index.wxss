@@ -95,6 +95,9 @@
 .hero-icon {
   width: 64rpx;
   height: 64rpx;
+  border-radius: 14rpx;
+  border: 1rpx solid rgba(31, 45, 61, 0.10);
+  box-shadow: 0 4rpx 10rpx rgba(31, 45, 61, 0.18);
   margin-right: 20rpx;
   flex-shrink: 0;
 }
