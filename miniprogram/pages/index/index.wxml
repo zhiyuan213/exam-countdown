@@ -60,7 +60,10 @@
       <text class="hero-title">考试倒计时</text>
       <text class="hero-sub">每一次努力，都在靠近梦想</text>
     </view>
-    <button class="hero-share" open-type="share" wx:if="{{!singlePage}}">分享给好友</button>
+    <button class="hero-share" open-type="share" wx:if="{{!singlePage}}" aria-label="分享给好友">
+      <image class="hero-share-icon" src="/images/share-icon.png" mode="aspectFit" />
+      <text class="hero-share-text">分享</text>
+    </button>
   </view>
 
   <!-- 单页模式（朋友圈打开）：无登录态，只做静态内容展示 -->
