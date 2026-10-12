@@ -117,8 +117,8 @@
    宽度必须 !important 才能生效 */
 .hero-share {
   position: absolute;
-  top: 18rpx;
-  right: 18rpx;
+  top: 10rpx;
+  right: 10rpx;
   margin: 0;
   padding: 0;
   width: 64rpx !important;
