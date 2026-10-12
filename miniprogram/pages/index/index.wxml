@@ -55,7 +55,7 @@
   </view>
 
   <view class="hero">
-    <image class="hero-icon" src="/images/calendar-red.png" />
+    <image class="hero-icon" src="/images/calendar-red.png" mode="aspectFit" />
     <view class="hero-text">
       <text class="hero-title">考试倒计时</text>
       <text class="hero-sub">每一次努力，都在靠近梦想</text>
