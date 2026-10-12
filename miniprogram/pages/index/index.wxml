@@ -64,12 +64,6 @@
       <button class="hero-btn" open-type="share" aria-label="分享给好友">
         <image class="hero-btn-img" src="/images/btn-friend.png" mode="aspectFit" />
       </button>
-      <button class="hero-btn" bindtap="onShareTimelineTap" aria-label="分享到朋友圈">
-        <image class="hero-btn-img" src="/images/btn-timeline.png" mode="aspectFit" />
-      </button>
-      <button class="hero-btn" bindtap="onFavTap" aria-label="收藏">
-        <image class="hero-btn-img" src="/images/btn-fav.png" mode="aspectFit" />
-      </button>
     </view>
   </view>
 

@@ -115,13 +115,12 @@
 /* 分享给好友（open-type=share）：hero 右上角小方块，与日历图标同尺寸同风格。
    ⚠️ 微信框架对 button 内置 button:not([size=mini]){width:184px}，优先级高于 class，
    宽度必须 !important 才能生效 */
-/* hero 右上角三按钮：分享朋友 / 分享朋友圈 / 收藏（用户提供的拟态按钮图，图片即按钮） */
+/* hero 右上角按钮：分享给好友（用户提供的拟态按钮图，图片即按钮） */
 .hero-actions {
   position: absolute;
   top: 0;
   right: 0;
   display: flex;
-  gap: 8rpx;
 }
 
 .hero-btn {
