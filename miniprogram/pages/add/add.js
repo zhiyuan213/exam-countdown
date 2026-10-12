@@ -192,4 +192,12 @@ Page({
     wx.showToast({ title: msg, icon: 'none', duration: 1500 });
     setTimeout(() => wx.navigateBack(), 1200);
   },
+
+  onShareAppMessage() {
+    return {
+      title: '考试倒计时 · 重要考试日期，一个都不漏',
+      path: '/pages/index/index?from=share',
+      imageUrl: '/images/share-cover.jpg',
+    };
+  },
 });

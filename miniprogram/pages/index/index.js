@@ -609,6 +609,39 @@ Page({
   },
 
   /**
+   * 分享卡片：挑一条「最值得晒」的节点。
+   * 只挑官方节点——自建提醒是用户私事，且接收方列表里没有对应节点；
+   * 优先已订阅的官方节点（用户最关心的），其次全部官方节点里日期最近的。
+   * 分享落地带 examId，接收方打开会高亮该节点。
+   */
+  buildShare() {
+    const cover = '/images/share-cover.jpg';
+    const official = (list) => (list || []).filter((n) => !n.passed && !n.isCustom);
+    const subs = official(this.data.subList);
+    const all = official([].concat(...this.data.groups.map((g) => g.nodes)));
+    const node = subs[0] || all[0] || null;
+    if (!node) {
+      return {
+        title: '考试倒计时 · 重要考试日期，一个都不漏',
+        path: '/pages/index/index?from=share',
+        imageUrl: cover,
+      };
+    }
+    const when = node.days === 0 ? '就是今天' : node.days === 1 ? '只剩 1 天' : `还有 ${node.days} 天`;
+    return {
+      title: `${node.name}${when}，一起来盯倒计时`,
+      path: `/pages/index/index?examId=${node.id}&from=share`,
+      imageUrl: cover,
+    };
+  },
+
+  onShareAppMessage() {
+    const info = this.buildShare();
+    log('share', `分享卡片：${info.title}`);
+    return info;
+  },
+
+  /**
    * 点击节点整行（不再只点那个小按钮，按钮太小不好点）：
    * 已结束 → 提示无法订阅；
    * 已订阅 → 操作菜单：再订 1 条提醒 / 取消订阅 /（自建）删除提醒；

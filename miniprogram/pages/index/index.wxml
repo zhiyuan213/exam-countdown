@@ -60,6 +60,7 @@
       <text class="hero-title">考试倒计时</text>
       <text class="hero-sub">每一次努力，都在靠近梦想</text>
     </view>
+    <button class="hero-share" open-type="share">分享给好友</button>
   </view>
 
   <view wx:if="{{loading}}" class="loading">加载中…</view>

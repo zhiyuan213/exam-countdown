@@ -64,4 +64,12 @@ Page({
         wx.showToast({ title: '加载失败，请下拉重试', icon: 'none' });
       });
   },
+
+  onShareAppMessage() {
+    return {
+      title: '考试倒计时 · 重要考试日期，一个都不漏',
+      path: '/pages/index/index?from=share',
+      imageUrl: '/images/share-cover.jpg',
+    };
+  },
 });
