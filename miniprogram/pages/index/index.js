@@ -722,6 +722,62 @@ Page({
   },
 
   /**
+   * 「分享到朋友圈」按钮：微信没有按钮直发朋友圈的 API，
+   * 用 wx.showShareImageMenu 打开原生的分享图片面板（含 发送给朋友/朋友圈/收藏/下载），
+   * 用户在里面选「分享到朋友圈」即可。面板失败（低版本等）降级为右上角引导。
+   */
+  onShareTimelineTap() {
+    const go = () => this.guideTimelineShare();
+    if (!wx.showShareImageMenu) {
+      go();
+      return;
+    }
+    wx.showShareImageMenu({
+      path: '/images/share-timeline.jpg',
+      fail: go,
+    });
+  },
+
+  guideTimelineShare() {
+    wx.showModal({
+      title: '分享到朋友圈',
+      content: '点击右上角「···」→ 选择「分享到朋友圈」，把考试倒计时推荐给更多备考的人。',
+      showCancel: false,
+      confirmText: '知道了',
+    });
+  },
+
+  /**
+   * 「收藏」按钮：微信没有「收藏小程序」的 API（只有视频/文件收藏），
+   * 做成「添加到我的小程序」引导——已添加则轻提示，未添加弹引导，
+   * 并用 wx.checkIsAddedToMyMiniProgram 检测状态（低版本走 fail 分支同样引导）。
+   */
+  onFavTap() {
+    const guide = () => {
+      wx.showModal({
+        title: '收藏考试倒计时',
+        content: '点击右上角「···」→ 选择「添加到我的小程序」，下次从微信首页下拉即可一键直达。',
+        showCancel: false,
+        confirmText: '知道了',
+      });
+    };
+    if (!wx.checkIsAddedToMyMiniProgram) {
+      guide();
+      return;
+    }
+    wx.checkIsAddedToMyMiniProgram({
+      success: (res) => {
+        if (res && res.added) {
+          wx.showToast({ title: '已在「我的小程序」里啦', icon: 'none' });
+        } else {
+          guide();
+        }
+      },
+      fail: guide,
+    });
+  },
+
+  /**
    * 点击节点整行（不再只点那个小按钮，按钮太小不好点）：
    * 已结束 → 提示无法订阅；
    * 已订阅 → 操作菜单：再订 1 条提醒 / 取消订阅 /（自建）删除提醒；

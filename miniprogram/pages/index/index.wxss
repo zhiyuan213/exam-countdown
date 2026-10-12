@@ -115,10 +115,16 @@
 /* 分享给好友（open-type=share）：hero 右上角小方块，与日历图标同尺寸同风格。
    ⚠️ 微信框架对 button 内置 button:not([size=mini]){width:184px}，优先级高于 class，
    宽度必须 !important 才能生效 */
-.hero-share {
+/* hero 右上角三按钮：分享朋友 / 分享朋友圈 / 收藏 */
+.hero-actions {
   position: absolute;
   top: 10rpx;
   right: 10rpx;
+  display: flex;
+  gap: 14rpx;
+}
+
+.hero-btn {
   margin: 0;
   padding: 0;
   width: 64rpx !important;
@@ -133,11 +139,11 @@
   box-shadow: 0 4rpx 10rpx rgba(31, 45, 61, 0.18);
 }
 
-.hero-share::after {
+.hero-btn::after {
   border: none;
 }
 
-.hero-share-icon {
+.hero-btn-icon {
   width: 36rpx;
   height: 36rpx;
 }
