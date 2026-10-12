@@ -87,6 +87,7 @@
 
 /* 顶部品牌区 */
 .hero {
+  position: relative;
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, #dcecfc 0%, #eef5fe 60%, rgba(238, 245, 254, 0) 100%);
@@ -115,8 +116,9 @@
    ⚠️ 微信框架对 button 内置 button:not([size=mini]){width:184px}，优先级高于 class，
    宽度必须 !important 才能生效 */
 .hero-share {
-  flex-shrink: 0;
-  align-self: flex-start;
+  position: absolute;
+  top: 18rpx;
+  right: 18rpx;
   margin: 0;
   padding: 0;
   width: 64rpx !important;
