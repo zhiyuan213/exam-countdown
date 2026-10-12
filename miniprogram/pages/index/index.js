@@ -14,6 +14,12 @@ const NODE_LABEL = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** 朋友圈分享卡片封面（官方要求 1:1，与转发给好友的 5:4 封面不同） */
+const SHARE_COVER_TIMELINE = '/images/share-timeline.jpg';
+
+/** 微信朋友圈单页模式的场景值 */
+const SCENE_TIMELINE_SINGLE_PAGE = 1154;
+
 /**
  * 统一日志前缀：真机调试/开发者工具里搜 "[exam]" 就能过滤出本小程序的流程日志。
  * 排查思路：先看 [exam][tap] 知道点了谁，再看 [exam][auth] 授权结果，
@@ -97,14 +103,43 @@ Page({
     pullReady: false,
     dragging: false,
     refreshing: false,
+    // 单页模式（从朋友圈打开，scene=1154）：无登录态、接口不可用，只做静态展示
+    singlePage: false,
+    spNode: null,
   },
 
   onLoad(options) {
     // 订阅消息推送会跳到 pages/index/index?examId=xxx，用来定位到具体节点
     this.setData({ highlightId: Number(options.examId) || 0 });
+
+    // 朋友圈分享打开 = 单页模式：wx.login / 云托管调用均不可用（无登录态），
+    // 直接用分享时写进 query 的节点快照静态渲染，不请求后端。
+    const lo = (wx.getLaunchOptionsSync && wx.getLaunchOptionsSync()) || {};
+    if (lo.scene === SCENE_TIMELINE_SINGLE_PAGE) {
+      const sp = this.parseSinglePageQuery(options);
+      log('scene', '单页模式（朋友圈打开），静态渲染', sp);
+      this.setData({ singlePage: true, spNode: sp, loading: false });
+    }
+  },
+
+  /** 解析单页模式 query 里的分享快照（n=节点名 d=剩余天数 date=截止日期） */
+  parseSinglePageQuery(options) {
+    if (!options || !options.n) return null;
+    let name = '';
+    try {
+      name = decodeURIComponent(options.n);
+    } catch (e) {
+      name = options.n;
+    }
+    const days = Number(options.d);
+    const daysLabel = isNaN(days)
+      ? ''
+      : days === 0 ? '就是今天' : days === 1 ? '只剩 1 天' : `还有 ${days} 天`;
+    return { name, date: options.date || '', days: isNaN(days) ? null : days, daysLabel };
   },
 
   onShow() {
+    if (this.data.singlePage) return; // 单页模式无登录态，跳过接口请求
     this.load();
     this.loadQuota();
     this.loadSubscriptions();
@@ -118,7 +153,7 @@ Page({
   // ================= 自定义下拉刷新（京东样式） =================
 
   onTouchStart(e) {
-    if (this.data.refreshing) return;
+    if (this.data.singlePage || this.data.refreshing) return;
     if ((this._scrollTop || 0) <= 0) {
       this._pullStartY = e.touches[0].clientY;
       this._pullActive = true;
@@ -156,6 +191,10 @@ Page({
   onTouchEnd() {
     if (!this._pullActive) return;
     this._pullActive = false;
+    if (this.data.singlePage) {
+      this.setData({ dragging: false, pullH: 0, pullText: '' });
+      return;
+    }
     if (this.data.pullReady && !this.data.refreshing) {
       // 松手 → 进入刷新态：角度从当前值逆时针收回 0° 回正（拉满时即逆时针转满一圈回到起点）；
       // 刷新中图标不再自转，只用文字「正在刷新」做反馈
@@ -608,18 +647,21 @@ Page({
     return `${days} 天后`;
   },
 
+  /** 挑一条「最值得晒」的官方节点：优先已订阅的（用户最关心），其次全部官方节点里日期最近的 */
+  pickShareNode() {
+    const official = (list) => (list || []).filter((n) => !n.passed && !n.isCustom);
+    const subs = official(this.data.subList);
+    const all = official([].concat(...(this.data.groups || []).map((g) => g.nodes)));
+    return subs[0] || all[0] || null;
+  },
+
   /**
-   * 分享卡片：挑一条「最值得晒」的节点。
-   * 只挑官方节点——自建提醒是用户私事，且接收方列表里没有对应节点；
-   * 优先已订阅的官方节点（用户最关心的），其次全部官方节点里日期最近的。
+   * 分享卡片：只挑官方节点——自建提醒是用户私事，且接收方列表里没有对应节点。
    * 分享落地带 examId，接收方打开会高亮该节点。
    */
   buildShare() {
     const cover = '/images/share-cover.jpg';
-    const official = (list) => (list || []).filter((n) => !n.passed && !n.isCustom);
-    const subs = official(this.data.subList);
-    const all = official([].concat(...this.data.groups.map((g) => g.nodes)));
-    const node = subs[0] || all[0] || null;
+    const node = this.pickShareNode();
     if (!node) {
       return {
         title: '考试倒计时 · 重要考试日期，一个都不漏',
@@ -638,6 +680,44 @@ Page({
   onShareAppMessage() {
     const info = this.buildShare();
     log('share', `分享卡片：${info.title}`);
+    return info;
+  },
+
+  /**
+   * 朋友圈分享（onShareTimeline）。
+   * 官方限制：
+   *  - 不支持自定义页面路径，只能改当前页面的参数（query），落地页固定是首页；
+   *  - imageUrl 显示比例为 1:1，用专门的方形封面；
+   *  - 从朋友圈打开是「单页模式」（无登录态、接口不可用），
+   *    所以把节点名/剩余天数/日期写进 query，供单页模式静态渲染。
+   */
+  buildShareTimeline() {
+    const node = this.pickShareNode();
+    if (!node) {
+      return {
+        title: '考试倒计时 · 重要考试日期，一个都不漏',
+        query: 'from=timeline',
+        imageUrl: SHARE_COVER_TIMELINE,
+      };
+    }
+    const when = node.days === 0 ? '就是今天' : node.days === 1 ? '只剩 1 天' : `还有 ${node.days} 天`;
+    const query = [
+      'from=timeline',
+      `examId=${node.id}`,
+      `n=${encodeURIComponent(node.name)}`,
+      `d=${node.days}`,
+      `date=${node.examDate}`,
+    ].join('&');
+    return {
+      title: `${node.name}${when}，一起来盯倒计时`,
+      query,
+      imageUrl: SHARE_COVER_TIMELINE,
+    };
+  },
+
+  onShareTimeline() {
+    const info = this.buildShareTimeline();
+    log('share', `朋友圈卡片：${info.title}`);
     return info;
   },
 

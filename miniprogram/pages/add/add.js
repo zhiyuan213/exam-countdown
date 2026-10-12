@@ -200,4 +200,13 @@ Page({
       imageUrl: '/images/share-cover.jpg',
     };
   },
+
+  /** 朋友圈分享：不支持自定义路径，imageUrl 需 1:1 */
+  onShareTimeline() {
+    return {
+      title: '考试倒计时 · 重要考试日期，一个都不漏',
+      query: 'from=timeline',
+      imageUrl: '/images/share-timeline.jpg',
+    };
+  },
 });

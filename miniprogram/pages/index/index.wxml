@@ -60,10 +60,21 @@
       <text class="hero-title">考试倒计时</text>
       <text class="hero-sub">每一次努力，都在靠近梦想</text>
     </view>
-    <button class="hero-share" open-type="share">分享给好友</button>
+    <button class="hero-share" open-type="share" wx:if="{{!singlePage}}">分享给好友</button>
   </view>
 
-  <view wx:if="{{loading}}" class="loading">加载中…</view>
+  <!-- 单页模式（朋友圈打开）：无登录态，只做静态内容展示 -->
+  <block wx:if="{{singlePage}}">
+    <view class="sp-card">
+      <view class="sp-badge">倒计时</view>
+      <view class="sp-name">{{spNode ? spNode.name : '考试倒计时'}}</view>
+      <view class="sp-days" wx:if="{{spNode && spNode.daysLabel}}">{{spNode.daysLabel}}</view>
+      <view class="sp-date" wx:if="{{spNode && spNode.date}}">截止日期 {{spNode.date}}</view>
+      <view class="sp-tip">以上为分享时的节点信息，实际剩余天数以打开小程序后为准。</view>
+    </view>
+  </block>
+
+  <view wx:elif="{{loading}}" class="loading">加载中…</view>
 
   <view wx:elif="{{errorMsg}}" class="empty">{{errorMsg}}</view>
 
