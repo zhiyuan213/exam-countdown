@@ -8,7 +8,8 @@ from PIL import Image, ImageDraw
 
 S = 240          # 画布（超采样，最后缩到 120）
 OUT最终 = 120
-GREEN = (7, 193, 96, 255)   # 微信绿 #07C160
+# 与 app 配色统一的蓝（#2C5AA0，同 hero 标题色）
+GREEN = (44, 90, 160, 255)
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'miniprogram', 'images', 'share-icon.png')
 
