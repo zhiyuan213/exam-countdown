@@ -32,7 +32,7 @@ Header: X-EXAM-APP: <可选>
     "status": 1,
     "appKey": "main",
     "appid": "wx23a7083f915b62a1",
-    "templateId": "CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws",
+    "templateId": "qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw",
     "groupCode": "kaoyan",
     "groupName": "考研",
     "nodeType": "EXAM",

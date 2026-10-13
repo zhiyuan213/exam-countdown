@@ -150,13 +150,13 @@ CREATE TABLE IF NOT EXISTS pay_refund (
 -- ============================================================
 INSERT IGNORE INTO exam (id, name, exam_date, status, app_key, appid, template_id, group_code, group_name, node_type, sort)
 VALUES
-  (1,  '考研初试',       '2026-12-19', 1, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'EXAM',   40),
-  (11, '考研报名',       '2026-10-08', 1, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'SIGNUP', 10),
-  (12, '考研报名截止',   '2026-10-25', 1, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'SIGNUP', 20),
-  (13, '考研准考证打印', '2026-12-10', 1, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'TICKET', 30),
-  (15, '考研成绩公布',   '2027-02-24', 0, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'SCORE',  50),
-  (16, '考研国家线公布', '2027-03-15', 0, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'SCORE',  60),
-  (17, '考研复试',       '2027-03-28', 0, 'kaoyan', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'kaoyan', '考研', 'RETEST', 70);
+  (1,  '考研初试',       '2026-12-19', 1, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'EXAM',   40),
+  (11, '考研报名',       '2026-10-08', 1, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'SIGNUP', 10),
+  (12, '考研报名截止',   '2026-10-25', 1, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'SIGNUP', 20),
+  (13, '考研准考证打印', '2026-12-10', 1, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'TICKET', 30),
+  (15, '考研成绩公布',   '2027-02-24', 0, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'SCORE',  50),
+  (16, '考研国家线公布', '2027-03-15', 0, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'SCORE',  60),
+  (17, '考研复试',       '2027-03-28', 0, 'kaoyan', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'kaoyan', '考研', 'RETEST', 70);
 
 -- ============================================================
 -- 种子数据：高考的全部节点（2027 年高考）
@@ -168,12 +168,12 @@ VALUES
 -- ============================================================
 INSERT IGNORE INTO exam (id, name, exam_date, status, app_key, appid, template_id, group_code, group_name, node_type, sort)
 VALUES
-  (201, '高考报名',       '2026-11-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'SIGNUP',    10),
-  (202, '高考准考证打印', '2027-06-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'TICKET',    20),
-  (203, '高考',           '2027-06-07', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'EXAM',      30),
-  (204, '高考成绩公布',   '2027-06-25', 1, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'SCORE',     40),
-  (205, '高考志愿填报',   '2027-06-28', 0, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'VOLUNTEER', 50),
-  (206, '本科批录取',     '2027-07-15', 0, 'gaokao', 'wx23a7083f915b62a1', 'CNGBzwKUOGbHRbLWPucbZsfDdHs_dcpYcK6Sv6gEuws', 'gaokao', '高考', 'ADMISSION', 60);
+  (201, '高考报名',       '2026-11-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'SIGNUP',    10),
+  (202, '高考准考证打印', '2027-06-01', 1, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'TICKET',    20),
+  (203, '高考',           '2027-06-07', 1, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'EXAM',      30),
+  (204, '高考成绩公布',   '2027-06-25', 1, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'SCORE',     40),
+  (205, '高考志愿填报',   '2027-06-28', 0, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'VOLUNTEER', 50),
+  (206, '本科批录取',     '2027-07-15', 0, 'gaokao', 'wx23a7083f915b62a1', 'qD0l3QHzRu-MOJl8A21mJxOzD-ykunkk-IjmGR-AJvw', 'gaokao', '高考', 'ADMISSION', 60);
 
 -- ============ 老库升级（已在线上跑过的库）============
 -- 不要手动 ALTER 了，直接执行 exam-countdown/migration-v3.sql（含考研+教资全部节点数据）
