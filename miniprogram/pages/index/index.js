@@ -403,9 +403,105 @@ Page({
       wx.showToast({ title: '没有需要订阅的节点', icon: 'none' });
       return;
     }
-    // 系统授权弹窗只显示模板名（所有节点共用一个模板时长得一样），
-    // 所以在确认弹窗里把订阅顺序列出来，用户按序号对照即可知道当前授权的是谁。
-    // 用页面内自定义弹窗而不是 showModal：后者的 \n 在部分机型不换行。
+    // 本次点击内「引导去设置」只用一次，避免 返回→再失败→再弹设置 死循环
+    this._subGuideUsed = false;
+    // 前置检查：用户关过主开关、或对「考试提醒」拒绝过 ⇒ 微信不再弹授权窗，
+    // 先引导去设置页打开开关，别让用户白走一遍必然失败的授权流程
+    this._needSubscribeGuide(targets).then((need) => {
+      if (!need) {
+        this._showBatchConfirm(group, targets);
+        return;
+      }
+      this._subGuideUsed = true;
+      this._guideToSubscribeSetting(() => this._showBatchConfirm(group, targets));
+    });
+  },
+
+  /**
+   * 订阅前置检查：是否需要先引导用户去设置页打开开关。
+   *
+   * 两种「微信不再弹授权窗」的情况（判定依赖 wx.getSetting 的 withSubscriptions）：
+   *   ① mainSwitch === false            —— 小程序设置页里「接收通知」主开关被关，
+   *                                        此后所有授权都直接 fail（errCode 20004）
+   *   ② itemSettings[模板id] === 'reject' —— 勾选过「总是保持以上选择，不再询问」
+   *                                        且选了拒绝，此后不再弹窗、静默返回 reject
+   * 这两种状态都由微信客户端本地保存（清缓存也清不掉），开发者无法用代码重置，
+   * 只能引导用户自己去设置页打开。返回 true = 需要引导。
+   */
+  _needSubscribeGuide(targets) {
+    return new Promise((resolve) => {
+      if (!wx.getSetting) {
+        resolve(false);
+        return;
+      }
+      wx.getSetting({
+        withSubscriptions: true,
+        success: (res) => {
+          const setting = (res && res.subscriptionsSetting) || {};
+          const items = setting.itemSettings || {};
+          const tplIds = [];
+          targets.forEach((n) => {
+            if (n.templateId && tplIds.indexOf(n.templateId) < 0) tplIds.push(n.templateId);
+          });
+          const rejected = tplIds.filter((id) => items[id] === 'reject');
+          const mainOff = setting.mainSwitch === false;
+          log('batch', '订阅前置检查',
+            `mainSwitch=${setting.mainSwitch}`,
+            `itemSettings=${JSON.stringify(items)}`,
+            `被拒绝的模板=${rejected.join(',') || '无'}`);
+          resolve(mainOff || rejected.length > 0);
+        },
+        // 检查失败不阻断主流程，按「可正常授权」继续（失败后仍会走下面的兜底引导）
+        fail: (e) => {
+          log('batch', '订阅前置检查失败，按可授权处理', e && e.errMsg);
+          resolve(false);
+        },
+      });
+    });
+  },
+
+  /**
+   * 引导用户去小程序设置页打开订阅开关；用户从设置页返回后回调 onOpened。
+   * 文案里的模板名「日程提醒」需与 mp 后台「我的模板」的标题一致（用户在设置页看到的就是它），
+   * 换模板时记得同步改这句。
+   *
+   * 关键（官方口径，容易踩错）：设置页里的开关**只代表「允许接收」**，
+   * 不等于已订阅 —— 微信在用户重新打开开关时会清空已有的订阅次数，
+   * 真正拿到一次推送额度还得回到小程序里再调一次 wx.requestSubscribeMessage。
+   * 所以这里不是「打开开关就完事」，而是在回调里重新走一遍订阅流程。
+   * 一次性订阅模板尤其要注意：每次授权只换 1 条推送。
+   */
+  _guideToSubscribeSetting(onOpened) {
+    wx.showModal({
+      title: '需要先打开订阅开关',
+      content: '你之前拒绝了提醒订阅（或勾选了「总是保持以上选择，不再询问」），微信不会再弹出授权窗口。请到设置里把「日程提醒」的开关打开，回来后我继续帮你订阅。',
+      confirmText: '去设置',
+      cancelText: '知道了',
+      success: (r) => {
+        if (!r.confirm || !wx.openSetting) return;
+        wx.openSetting({
+          withSubscriptions: true,
+          success: (s) => {
+            const setting = (s && s.subscriptionsSetting) || {};
+            log('batch', '设置页返回',
+              `mainSwitch=${setting.mainSwitch}`,
+              `itemSettings=${JSON.stringify(setting.itemSettings || {})}`);
+            // 开关打开 ≠ 已订阅：必须再调一次 requestSubscribeMessage 才算拿到额度
+            if (onOpened) onOpened();
+          },
+          fail: (e) => log('batch', '打开订阅设置失败', e && e.errMsg),
+        });
+      },
+    });
+  },
+
+  /**
+   * 展示批量订阅确认弹窗。用页面内自定义弹窗而不是 showModal：
+   * 后者的 \n 在部分机型不换行。
+   * 系统授权弹窗只显示模板名（所有节点共用一个模板时长得一样），
+   * 所以在这里把订阅顺序列出来，用户按序号对照即可知道当前授权的是谁。
+   */
+  _showBatchConfirm(group, targets) {
     this._bmConfirmCb = () => {
         const accepted = [];
         // 记录每个未通过节点的原因（reject=用户拒绝 / ban=勾选过「总是保持以上选择」且上次选了拒绝，
@@ -419,25 +515,15 @@ Page({
               const reasons = failReasons.join(' | ');
               log('batch', '全部授权未通过，结束', reasons);
               const banned = failReasons.some((s) => /: (ban|reject)$/.test(s));
-              if (banned) {
-                // 用户端把「考试提醒」的订阅关掉了（最常见：之前弹授权时勾选了
-                // 「总是保持以上选择」+ 拒绝，此后不再弹窗、全部静默拒绝）。
-                // 授权弹窗这边永远出不来，只能引导用户去设置里把开关重新打开。
-                wx.showModal({
-                  title: '订阅未成功',
-                  content: '订阅授权被拒绝，系统不再弹出授权窗口（通常是之前勾选过「总是保持以上选择」）。去小程序设置里重新打开「考试提醒」的订阅开关后，再回来重试。',
-                  confirmText: '去设置',
-                  cancelText: '知道了',
-                  success: (r) => {
-                    if (r.confirm && wx.openSetting) {
-                      wx.openSetting({
-                        withSubscriptions: true,
-                        success: (s) => log('batch', '打开订阅设置完成', JSON.stringify(s.subscriptionsSetting || {})),
-                        fail: (e) => log('batch', '打开订阅设置失败', e && e.errMsg),
-                      });
-                    }
-                  },
-                });
+              // 用户端把「考试提醒」的订阅关掉了（最常见：之前弹授权时勾选了
+              // 「总是保持以上选择」+ 拒绝，此后不再弹窗、全部静默拒绝）。
+              // 授权弹窗这边永远出不来，只能引导用户去设置里把开关重新打开；
+              // 同一次点击内只引导一次，避免「返回 → 再失败 → 再弹设置」死循环。
+              if (banned && !this._subGuideUsed) {
+                this._subGuideUsed = true;
+                this._guideToSubscribeSetting(() => this._showBatchConfirm(group, targets));
+              } else if (banned) {
+                wx.showToast({ title: '请到设置里打开订阅开关', icon: 'none' });
               } else {
                 wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
               }
