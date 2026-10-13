@@ -67,6 +67,17 @@
     </view>
   </view>
 
+  <!-- 进小程序时静默检测到的订阅阻断（总开关被关 / 模板被拒绝）：
+       弱提示、可关闭，不打断操作；只有点「去开启」才进设置页
+       （订阅授权必须由用户点击触发，进来时无法自动拉起授权窗） -->
+  <view wx:if="{{subHint}}" class="sub-hint">
+    <view class="sub-hint-text">
+      {{subHintMainOff ? '你关闭了「接收通知」，考试提醒发不出去' : '你之前拒绝了考试提醒，微信不再弹授权窗'}}
+    </view>
+    <view class="sub-hint-go" bindtap="onSubHintOpen">去开启</view>
+    <view class="sub-hint-close" bindtap="onSubHintClose">✕</view>
+  </view>
+
   <!-- 单页模式（朋友圈打开）：无登录态，只做静态内容展示 -->
   <block wx:if="{{singlePage}}">
     <view class="sp-card">

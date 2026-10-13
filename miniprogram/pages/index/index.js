@@ -41,6 +41,14 @@ const REMIND_NODES = {
 /** 推送时间点：后端 RemindJob 每天定时执行（默认 08:00） */
 const PUSH_TIME = '8:00';
 
+/**
+ * 首页订阅提示条的节流间隔：同一条提示 7 天内最多出现一次。
+ * 用户已经用「拒绝」表达过不想要推送，每次进来都念一遍只会招人烦
+ * （也容易被审核当成骚扰），所以提示过就安静一阵子。
+ */
+const SUB_HINT_KEY = 'exam.subHintAt';
+const SUB_HINT_GAP_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** 把 "YYYY-MM-DD" 解析成本地零点的时间戳，避免时区偏移 */
 function parseDate(s) {
   const p = String(s).split('-').map(Number);
@@ -103,6 +111,9 @@ Page({
     // 单页模式（从朋友圈打开，scene=1154）：无登录态、接口不可用，只做静态展示
     singlePage: false,
     spNode: null,
+    // 进小程序时静默检测到的订阅阻断（总开关被关 / 当前模板被拒绝）→ 顶部提示条
+    subHint: false,
+    subHintMainOff: false,
   },
 
   onLoad(options) {
@@ -137,9 +148,11 @@ Page({
 
   onShow() {
     if (this.data.singlePage) return; // 单页模式无登录态，跳过接口请求
-    this.load();
+    // 订阅状态提示要等「节点 + 已订阅列表」都回来才知道有没有「未订阅的节点」可提示
+    Promise.all([this.load(), this.loadSubscriptions()])
+      .catch(() => {})
+      .then(() => this.checkSubHint());
     this.loadQuota();
-    this.loadSubscriptions();
   },
 
   /** 记录页面滚动位置：只在滚到顶时才允许触发下拉刷新 */
@@ -372,6 +385,123 @@ Page({
     });
   },
 
+  // ================= 进小程序时的订阅状态提示 =================
+
+  /**
+   * 静默看一眼微信侧的订阅设置，命中「微信不会再弹授权窗」就在顶部挂一条可关闭的
+   * 提示条。wx.getSetting 是纯读接口、不需要用户点击，所以 onShow 里就能查。
+   *
+   * 能拿到什么（subscriptionsSetting）：
+   *   mainSwitch === false               —— 用户在小程序设置页关掉了「接收通知」，
+   *                                         此后所有授权直接 fail（errCode 20004）
+   *   itemSettings[当前模板] === 'reject' —— 用户点过「总是保持以上选择，不再询问」+ 拒绝
+   * 注意 itemSettings **只包含勾过「总是保持以上选择」的模板**，普通的「拒绝一次」不
+   * 会出现在这里 —— 那种情况微信仍会正常弹窗，本来也不需要提示。
+   *
+   * 拿不到什么：推送额度。订阅是「一次授权 = 一次推送」，itemSettings 里的 'accept'
+   * 只说明用户当初同意过，不代表现在还有额度；额度只能看服务端记录（subscribedMap）。
+   * 所以这里只判断「被硬阻断」，不判断「有没有订阅」。
+   *
+   * 'ban'（模板被后台封禁）刻意不当成需要引导的信号：那是模板本身没了，去设置页
+   * 打开开关也解决不了（2026-10-13 改类目删模板那次就是这种状态）。
+   */
+  checkSubHint() {
+    if (this.data.singlePage || !wx.getSetting) return;
+    const nodes = this._allNodes || [];
+    // 只认「当前还在用的模板」被拒绝，历史失效模板的记录不提示
+    const tplIds = [];
+    nodes.forEach((n) => {
+      if (n.templateId && tplIds.indexOf(n.templateId) < 0) tplIds.push(n.templateId);
+    });
+    if (tplIds.length === 0) return;
+    // 没有「未结束且未订阅」的节点就别提示 —— 提示了用户也没东西可订
+    const map = this.data.subscribedMap || {};
+    const pending = nodes.filter((n) => !n.passed && n.templateId && !(map[n.id] > 0));
+    if (pending.length === 0) {
+      if (this.data.subHint) this.setData({ subHint: false });
+      return;
+    }
+    // 节流：提示过就安静 7 天，别每次进来都念
+    const last = Number(wx.getStorageSync(SUB_HINT_KEY)) || 0;
+    if (Date.now() - last < SUB_HINT_GAP_MS) return;
+    wx.getSetting({
+      withSubscriptions: true,
+      success: (res) => {
+        const setting = (res && res.subscriptionsSetting) || {};
+        const items = setting.itemSettings || {};
+        const mainOff = setting.mainSwitch === false;
+        const rejected = tplIds.some((id) => items[id] === 'reject');
+        log('hint', '首页订阅状态检查',
+          `mainSwitch=${setting.mainSwitch}`,
+          `itemSettings=${JSON.stringify(items)}`,
+          `未订阅节点=${pending.length}`,
+          `需提示=${mainOff || rejected}`);
+        if (!mainOff && !rejected) {
+          if (this.data.subHint) this.setData({ subHint: false });
+          return;
+        }
+        wx.setStorageSync(SUB_HINT_KEY, Date.now());
+        this.setData({ subHint: true, subHintMainOff: mainOff });
+      },
+      // 查不到就安静，不打扰用户；真正的兜底在点「订阅提醒」时的前置检查里
+      fail: (e) => log('hint', '首页订阅状态检查失败', e && e.errMsg),
+    });
+  },
+
+  /** 点提示条的「去开启」：先记节流（开没开都别再念叨），再引导去设置页 */
+  onSubHintOpen() {
+    log('hint', '点提示条「去开启」');
+    wx.setStorageSync(SUB_HINT_KEY, Date.now());
+    this.setData({ subHint: false });
+    this._guideToSubscribeSetting(() => this.autoSubscribePending());
+  },
+
+  /** 关掉提示条：同样记节流，用户主动关闭后 7 天内不再出现 */
+  onSubHintClose() {
+    log('hint', '关闭订阅提示条');
+    wx.setStorageSync(SUB_HINT_KEY, Date.now());
+    this.setData({ subHint: false });
+  },
+
+  /**
+   * 从设置页返回后接着把「还没订阅的节点」授权完。
+   * 依据官方口径：设置页里的开关只代表「允许接收」，打开开关还会清空已有订阅次数，
+   * 真正拿到额度必须回小程序再调一次 wx.requestSubscribeMessage。
+   * 所以这里不能只 toast 一句「已开启」，得直接把授权流程接上，否则用户回来还得自己找。
+   */
+  autoSubscribePending() {
+    const map = this.data.subscribedMap || {};
+    const pendingIds = {};
+    (this._allNodes || []).forEach((n) => {
+      if (!n.passed && n.templateId && !(map[n.id] > 0)) pendingIds[n.id] = true;
+    });
+    // 取第一个还有待订阅节点的分组作为这一批（自建节点没有分组，单独兜个批次名）
+    let group = null;
+    let targets = [];
+    (this.data.groups || []).forEach((g) => {
+      if (targets.length) return;
+      const t = (g.nodes || []).filter((n) => pendingIds[n.id]);
+      if (t.length) { group = g; targets = t; }
+    });
+    if (!targets.length) {
+      const t = (this.data.customNodes || []).filter((n) => pendingIds[n.id]);
+      if (t.length) { group = { groupName: '自定义提醒' }; targets = t; }
+    }
+    if (!targets.length) {
+      wx.showToast({ title: '没有需要订阅的节点', icon: 'none' });
+      return;
+    }
+    this._subGuideUsed = false;
+    // 再查一次：用户可能只是进设置页逛了一圈没真打开开关，那就别发起注定失败的授权
+    this._needSubscribeGuide(targets).then((need) => {
+      if (need) {
+        wx.showToast({ title: '订阅开关还没打开', icon: 'none' });
+        return;
+      }
+      this._showBatchConfirm(group, targets);
+    });
+  },
+
   // ================= 分组批量订阅 / 批量取消 =================
 
   _groupNodes(code) {
@@ -514,16 +644,22 @@ Page({
             if (accepted.length === 0) {
               const reasons = failReasons.join(' | ');
               log('batch', '全部授权未通过，结束', reasons);
-              const banned = failReasons.some((s) => /: (ban|reject)$/.test(s));
-              // 用户端把「考试提醒」的订阅关掉了（最常见：之前弹授权时勾选了
-              // 「总是保持以上选择」+ 拒绝，此后不再弹窗、全部静默拒绝）。
-              // 授权弹窗这边永远出不来，只能引导用户去设置里把开关重新打开；
-              // 同一次点击内只引导一次，避免「返回 → 再失败 → 再弹设置」死循环。
-              if (banned && !this._subGuideUsed) {
+              // 官方口径（2026-10-13 核实）：
+              //   'reject' = 用户勾过「总是保持以上选择，不再询问」并拒绝 ⇒ 微信此后不再弹窗，
+              //              只能引导用户去设置页打开开关；同一次点击内只引导一次，
+              //              避免「返回 → 再失败 → 再弹设置」死循环。
+              //   'ban'    = 该模板已被后台封禁（不是用户拒绝！）⇒ 去设置页也解决不了，
+              //              属于我们这边模板/类目的配置问题，别让用户白折腾。
+              const rejectedByUser = failReasons.some((s) => /: reject$/.test(s));
+              const tplBanned = failReasons.some((s) => /: ban$/.test(s));
+              if (rejectedByUser && !this._subGuideUsed) {
                 this._subGuideUsed = true;
                 this._guideToSubscribeSetting(() => this._showBatchConfirm(group, targets));
-              } else if (banned) {
+              } else if (rejectedByUser) {
                 wx.showToast({ title: '请到设置里打开订阅开关', icon: 'none' });
+              } else if (tplBanned) {
+                console.error('[exam][batch] 订阅模板被后台封禁，需检查 mp 后台模板/类目');
+                wx.showToast({ title: '提醒服务暂不可用，请稍后再试', icon: 'none' });
               } else {
                 wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
               }
