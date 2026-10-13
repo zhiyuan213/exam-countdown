@@ -408,13 +408,39 @@ Page({
     // 用页面内自定义弹窗而不是 showModal：后者的 \n 在部分机型不换行。
     this._bmConfirmCb = () => {
         const accepted = [];
+        // 记录每个未通过节点的原因（reject=用户拒绝 / ban=勾选过「总是保持以上选择」且上次选了拒绝，
+        // 后续不再弹窗直接返回 ban / 其余为 fail errMsg），全部失败时用于给出针对性引导
+        const failReasons = [];
         log('batch', `开始批量订阅「${group.groupName}」共 ${targets.length} 个`,
           targets.map((n) => n.name).join(' / '));
         const step = (i) => {
           if (i >= targets.length) {
             if (accepted.length === 0) {
-              log('batch', '全部授权未通过，结束');
-              wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
+              const reasons = failReasons.join(' | ');
+              log('batch', '全部授权未通过，结束', reasons);
+              const banned = failReasons.some((s) => /: (ban|reject)$/.test(s));
+              if (banned) {
+                // 用户端把「考试提醒」的订阅关掉了（最常见：之前弹授权时勾选了
+                // 「总是保持以上选择」+ 拒绝，此后不再弹窗、全部静默拒绝）。
+                // 授权弹窗这边永远出不来，只能引导用户去设置里把开关重新打开。
+                wx.showModal({
+                  title: '订阅未成功',
+                  content: '订阅授权被拒绝，系统不再弹出授权窗口（通常是之前勾选过「总是保持以上选择」）。去小程序设置里重新打开「考试提醒」的订阅开关后，再回来重试。',
+                  confirmText: '去设置',
+                  cancelText: '知道了',
+                  success: (r) => {
+                    if (r.confirm && wx.openSetting) {
+                      wx.openSetting({
+                        withSubscriptions: true,
+                        success: (s) => log('batch', '打开订阅设置完成', JSON.stringify(s.subscriptionsSetting || {})),
+                        fail: (e) => log('batch', '打开订阅设置失败', e && e.errMsg),
+                      });
+                    }
+                  },
+                });
+              } else {
+                wx.showToast({ title: '没有完成任何订阅', icon: 'none' });
+              }
               return;
             }
             log('batch', `授权通过 ${accepted.length}/${targets.length}，开始登记额度`);
@@ -452,12 +478,15 @@ Page({
                 const ok = r[node.templateId] === 'accept';
                 log('batch', `授权[${i + 1}/${targets.length}]「${node.name}」= ${r[node.templateId]}`);
                 if (ok) accepted.push(node);
+                else failReasons.push(`${node.name}: ${r[node.templateId]}`);
                 step(i + 1);
               },
               fail: (err) => {
-                // 预期内的授权链断开（非用户手势触发被拒），降级为 warn 避免控制台红字刷屏
-                console.warn('[exam][batch] 授权链断开，弹继续授权:', node.name, err && err.errMsg);
                 const msg = (err && err.errMsg) || '';
+                failReasons.push(`${node.name}: ${msg}`);
+                log('batch', `授权失败[${i + 1}/${targets.length}]「${node.name}」: ${msg}`);
+                // 预期内的授权链断开（非用户手势触发被拒），降级为 warn 避免控制台红字刷屏
+                console.warn('[exam][batch] 授权链断开，弹继续授权:', node.name, msg);
                 // 授权链断开（常见于开发者工具：非用户手势调用被拒）。
                 // 弹一个过渡弹窗，用户点「继续」的手势可以重新拉起授权。
                 if (/TAP|gesture/i.test(msg) && i + 1 <= targets.length) {
